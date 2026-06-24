@@ -19,54 +19,42 @@ Write-Host ""
 # ---- 1. Parar Backend ----
 $pidFile = Join-Path $root ".pid_backend"
 if (Test-Path $pidFile) {
-    $pid = Get-Content $pidFile -ErrorAction SilentlyContinue
-    if ($pid) {
-        $proc = Get-Process -Id $pid -ErrorAction SilentlyContinue
+    $backendPid = Get-Content $pidFile -ErrorAction SilentlyContinue
+    if ($backendPid -and $backendPid -ne $PID) {
+        $proc = Get-Process -Id $backendPid -ErrorAction SilentlyContinue
         if ($proc) {
-            Stop-Process -Id $pid -Force -ErrorAction SilentlyContinue
-            Write-Host "[OK] Backend parado (PID $pid)" -ForegroundColor Green
+            Stop-Process -Id $backendPid -Force -ErrorAction SilentlyContinue
+            Write-Host "[OK] Backend parado (PID $backendPid)" -ForegroundColor Green
         } else {
             Write-Host "[--] Backend ya no estaba corriendo" -ForegroundColor DarkGray
         }
     }
     Remove-Item $pidFile -Force
 } else {
-    # Fallback: buscar procesos dotnet con EconomIA
-    $dotnetProcs = Get-Process -Name "dotnet" -ErrorAction SilentlyContinue | Where-Object {
-        $_.CommandLine -like "*EconomIA.API*"
-    }
-    if ($dotnetProcs) {
-        $dotnetProcs | Stop-Process -Force
-        Write-Host "[OK] Backend parado (fallback)" -ForegroundColor Green
-    } else {
-        Write-Host "[--] Backend no encontrado" -ForegroundColor DarkGray
-    }
+    Write-Host "[--] Backend PID file no encontrado" -ForegroundColor DarkGray
 }
 
 # ---- 2. Parar Frontend ----
 $pidFile = Join-Path $root ".pid_frontend"
 if (Test-Path $pidFile) {
-    $pid = Get-Content $pidFile -ErrorAction SilentlyContinue
-    if ($pid) {
-        $proc = Get-Process -Id $pid -ErrorAction SilentlyContinue
+    $frontendPid = Get-Content $pidFile -ErrorAction SilentlyContinue
+    if ($frontendPid -and $frontendPid -ne $PID) {
+        $proc = Get-Process -Id $frontendPid -ErrorAction SilentlyContinue
         if ($proc) {
-            # npm spawns child node process, kill the tree
-            Stop-Process -Id $pid -Force -ErrorAction SilentlyContinue
-            Write-Host "[OK] Frontend parado (PID $pid)" -ForegroundColor Green
+            # Matar proceso y sus hijos (node spawns children)
+            try {
+                taskkill /PID $frontendPid /T /F 2>&1 | Out-Null
+            } catch {
+                Stop-Process -Id $frontendPid -Force -ErrorAction SilentlyContinue
+            }
+            Write-Host "[OK] Frontend parado (PID $frontendPid)" -ForegroundColor Green
         } else {
             Write-Host "[--] Frontend ya no estaba corriendo" -ForegroundColor DarkGray
         }
     }
     Remove-Item $pidFile -Force
 } else {
-    Write-Host "[--] Frontend no encontrado" -ForegroundColor DarkGray
-}
-
-# Kill any orphan node processes on port 3000
-$nodeOnPort = Get-NetTCPConnection -LocalPort 3000 -ErrorAction SilentlyContinue | Select-Object -ExpandProperty OwningProcess -Unique
-if ($nodeOnPort) {
-    $nodeOnPort | ForEach-Object { Stop-Process -Id $_ -Force -ErrorAction SilentlyContinue }
-    Write-Host "[OK] Procesos huerfanos en :3000 eliminados" -ForegroundColor Green
+    Write-Host "[--] Frontend PID file no encontrado" -ForegroundColor DarkGray
 }
 
 # ---- 3. Parar Docker ----
