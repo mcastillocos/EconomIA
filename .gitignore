@@ -1,0 +1,36 @@
+# .NET
+**/bin/
+**/obj/
+**/*.user
+**/*.suo
+**/.vs/
+*.sln.docstates
+
+# Node
+**/node_modules/
+**/dist/
+**/.cache/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+
+# OS
+Thumbs.db
+.DS_Store
+
+# PIDs (start/stop scripts)
+.pid_*
+
+# Secrets
+.env
+.env.*
+!.env.example
+
+# Docker volumes
+**/data/
+
+# Terraform
+**/.terraform/
+*.tfstate*

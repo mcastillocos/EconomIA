@@ -1,0 +1,14 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: economia
+
+resources:
+  - ../base/namespace.yaml
+  - ../base/secrets/secrets.yaml
+  - ../base/api/deployment.yaml
+  - ../base/frontend/deployment.yaml
+  - ../base/sqlserver/statefulset.yaml
+  - ../base/redis/deployment.yaml
+  - ../base/kafka/statefulset.yaml
+  - ../base/ingress.yaml

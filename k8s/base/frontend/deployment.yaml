@@ -1,0 +1,42 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: economia-frontend
+  namespace: economia
+  labels:
+    app: economia-frontend
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: economia-frontend
+  template:
+    metadata:
+      labels:
+        app: economia-frontend
+    spec:
+      containers:
+        - name: frontend
+          image: economia-registry:5050/economia-frontend:latest
+          ports:
+            - containerPort: 80
+          resources:
+            requests:
+              memory: "64Mi"
+              cpu: "50m"
+            limits:
+              memory: "128Mi"
+              cpu: "100m"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: economia-frontend-service
+  namespace: economia
+spec:
+  selector:
+    app: economia-frontend
+  ports:
+    - port: 80
+      targetPort: 80
+  type: ClusterIP

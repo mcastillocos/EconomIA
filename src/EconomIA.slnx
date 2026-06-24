@@ -1,0 +1,10 @@
+<Solution>
+  <Project Path="../tests/EconomIA.API.Tests/EconomIA.API.Tests.csproj" />
+  <Project Path="../tests/EconomIA.Application.Tests/EconomIA.Application.Tests.csproj" />
+  <Project Path="../tests/EconomIA.Domain.Tests/EconomIA.Domain.Tests.csproj" />
+  <Project Path="../tests/EconomIA.Infrastructure.Tests/EconomIA.Infrastructure.Tests.csproj" />
+  <Project Path="EconomIA.API/EconomIA.API.csproj" />
+  <Project Path="EconomIA.Application/EconomIA.Application.csproj" />
+  <Project Path="EconomIA.Domain/EconomIA.Domain.csproj" />
+  <Project Path="EconomIA.Infrastructure/EconomIA.Infrastructure.csproj" />
+</Solution>
