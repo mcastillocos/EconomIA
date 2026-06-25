@@ -1,5 +1,5 @@
-import { useState, useMemo } from 'react';
-import { Plus, Trash2, BarChart3, X, Search, Loader2 } from 'lucide-react';
+import { useState, useMemo, useCallback } from 'react';
+import { Plus, Trash2, BarChart3, X, Search, Loader2, Trophy, Sparkles } from 'lucide-react';
 import {
   RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis,
   ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend,
@@ -10,6 +10,17 @@ import { useConfigStore } from '../../store/configStore';
 import { appLog } from '../../store/logStore';
 import clsx from 'clsx';
 
+interface AIRanking {
+  ranking: { position: number; isin: string; score: number; strengths: string[]; weaknesses: string[] }[];
+  bestByHorizon?: {
+    shortTerm: { isin: string; name: string; return: number; reason: string };
+    mediumTerm: { isin: string; name: string; return: number; reason: string };
+    longTerm: { isin: string; name: string; return: number; reason: string };
+  };
+  summary: string;
+  recommendation: string;
+}
+
 interface Props {
   topFunds: Fund[];
 }
@@ -19,37 +30,100 @@ export function MisFondosView({ topFunds }: Props) {
   const totalFunds = useConfigStore((s) => s.totalFunds);
   const [showForm, setShowForm] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [aiRanking, setAiRanking] = useState<AIRanking | null>(null);
+  const [aiLoading, setAiLoading] = useState(false);
 
   const selectedFund = myFunds.find((f) => f.id === selectedId) ?? null;
+
+  // Calculate scores for local ranking
+  const rankedFunds = useMemo(() => {
+    return myFunds
+      .map((f) => {
+        const comparison = compareFundVsTop(f, topFunds, totalFunds);
+        return { fund: f, score: comparison?.compositeScore ?? 0, comparison };
+      })
+      .sort((a, b) => b.score - a.score);
+  }, [myFunds, topFunds, totalFunds]);
 
   const handleAdd = (fund: Omit<MyFund, 'id' | 'addedAt'>) => {
     addFund(fund);
     setShowForm(false);
+    setAiRanking(null); // Invalidate AI ranking
     appLog.success('App', `Fondo propio añadido: ${fund.name} (${fund.isin})`);
   };
 
   const handleRemove = (id: string, name: string) => {
     removeFund(id);
     if (selectedId === id) setSelectedId(null);
+    setAiRanking(null);
     appLog.info('App', `Fondo propio eliminado: ${name}`);
   };
 
+  const handleAIAnalysis = useCallback(async () => {
+    if (myFunds.length < 2) return;
+    setAiLoading(true);
+    setAiRanking(null);
+    appLog.info('LLM', 'Solicitando análisis comparativo de fondos...');
+    try {
+      const payload = myFunds.map((f) => ({
+        isin: f.isin,
+        name: f.name,
+        category: f.category,
+        managementCompany: f.managementCompany,
+        netAssetValue: f.netAssetValue,
+        currency: f.currency,
+        expenseRatio: f.expenseRatio,
+        riskLevel: f.riskLevel,
+        return1Year: f.latestPerformance?.return1Year ?? 0,
+        return3Years: f.latestPerformance?.return3Years ?? 0,
+        return5Years: f.latestPerformance?.return5Years ?? 0,
+        volatility: f.latestPerformance?.volatility ?? 0,
+        sharpeRatio: f.latestPerformance?.sharpeRatio ?? 0,
+      }));
+      const res = await fetch('/api/llm/compare', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ funds: payload }),
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data: AIRanking = await res.json();
+      setAiRanking(data);
+      appLog.success('LLM', `Análisis completado: ${data.ranking.length} fondos rankeados`);
+    } catch (err) {
+      appLog.error('LLM', `Error en análisis: ${(err as Error).message}`);
+    } finally {
+      setAiLoading(false);
+    }
+  }, [myFunds]);
+
   return (
     <>
-      <div className="mb-6 flex items-center justify-between">
+      <div className="mb-4 md:mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
-          <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Mis Fondos</h2>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+          <h2 className="text-xl md:text-2xl font-bold text-gray-900 dark:text-gray-100">Mis Fondos</h2>
+          <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mt-1">
             Añade tus fondos y compáralos con los Top {totalFunds} del mercado
           </p>
         </div>
-        <button
-          onClick={() => setShowForm(true)}
-          className="flex items-center gap-2 px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-lg text-sm font-medium transition-colors"
-        >
-          <Plus className="h-4 w-4" />
-          Añadir fondo
-        </button>
+        <div className="flex gap-2">
+          {myFunds.length >= 2 && (
+            <button
+              onClick={handleAIAnalysis}
+              disabled={aiLoading}
+              className="flex items-center gap-2 px-3 py-2 bg-purple-600 hover:bg-purple-700 disabled:bg-gray-400 text-white rounded-lg text-xs sm:text-sm font-medium transition-colors"
+            >
+              {aiLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+              Análisis IA
+            </button>
+          )}
+          <button
+            onClick={() => setShowForm(true)}
+            className="flex items-center gap-2 px-3 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-lg text-xs sm:text-sm font-medium transition-colors"
+          >
+            <Plus className="h-4 w-4" />
+            Añadir fondo
+          </button>
+        </div>
       </div>
 
       {/* Form modal */}
@@ -65,22 +139,95 @@ export function MisFondosView({ topFunds }: Props) {
         </div>
       ) : (
         <div className="space-y-6">
+          {/* AI Analysis Panel */}
+          {aiLoading && (
+            <div className="bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-700/50 rounded-lg p-6 text-center">
+              <Loader2 className="h-6 w-6 animate-spin text-purple-500 mx-auto mb-2" />
+              <p className="text-sm text-purple-700 dark:text-purple-300">Analizando tus fondos con IA...</p>
+            </div>
+          )}
+          {aiRanking && aiRanking.ranking && aiRanking.ranking.length > 0 && (
+            <div className="bg-white dark:bg-[#2a2a2a] rounded-lg border border-purple-200 dark:border-purple-700/50 overflow-hidden">
+              <div className="bg-purple-50 dark:bg-purple-900/30 px-5 py-3 border-b border-purple-200 dark:border-purple-700/50 flex items-center gap-2">
+                <Trophy className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+                <h3 className="text-sm font-bold text-purple-800 dark:text-purple-200">Ranking IA de tus fondos</h3>
+              </div>
+              <div className="p-5 space-y-4">
+                {/* Ranking list */}
+                <div className="space-y-3">
+                  {aiRanking.ranking.map((r) => {
+                    const fund = myFunds.find((f) => f.isin === r.isin);
+                    const medal = r.position === 1 ? '🥇' : r.position === 2 ? '🥈' : r.position === 3 ? '🥉' : `#${r.position}`;
+                    const scoreColor = r.score >= 70 ? 'text-green-600 dark:text-green-400' : r.score >= 40 ? 'text-yellow-600 dark:text-yellow-400' : 'text-red-600 dark:text-red-400';
+                    return (
+                      <div key={r.isin} className="flex items-start gap-3 p-3 rounded-lg bg-gray-50 dark:bg-[#1e1e1e]">
+                        <span className="text-2xl">{medal}</span>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className="font-semibold text-sm text-gray-900 dark:text-gray-100 truncate">{fund?.name || r.isin}</span>
+                            <span className={clsx('text-sm font-bold', scoreColor)}>{r.score}/100</span>
+                          </div>
+                          <div className="text-xs text-gray-500 font-mono">{r.isin}</div>
+                          <div className="flex flex-wrap gap-1 mt-1">
+                            {r.strengths.map((s, i) => (
+                              <span key={i} className="text-xs bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 px-2 py-0.5 rounded-full">✓ {s}</span>
+                            ))}
+                            {r.weaknesses.map((w, i) => (
+                              <span key={i} className="text-xs bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 px-2 py-0.5 rounded-full">✗ {w}</span>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+                {/* Best by Horizon */}
+                {aiRanking.bestByHorizon && (
+                  <div className="border-t border-gray-200 dark:border-gray-700/50 pt-3">
+                    <h4 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase mb-2">Mejor fondo por horizonte temporal</h4>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                      {[{ label: 'Corto plazo (1A)', data: aiRanking.bestByHorizon.shortTerm, icon: '⚡' },
+                        { label: 'Medio plazo (3A)', data: aiRanking.bestByHorizon.mediumTerm, icon: '📈' },
+                        { label: 'Largo plazo (5A)', data: aiRanking.bestByHorizon.longTerm, icon: '🏆' }].map(({ label, data, icon }) => (
+                        <div key={label} className="p-3 rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700/50">
+                          <div className="text-xs text-blue-600 dark:text-blue-400 font-medium">{icon} {label}</div>
+                          <div className="text-sm font-bold text-gray-900 dark:text-gray-100 mt-1 truncate">{data.name}</div>
+                          <div className="text-xs font-mono text-gray-500">{data.isin}</div>
+                          <div className="text-sm font-bold text-green-600 dark:text-green-400 mt-1">+{data.return.toFixed(2)}%</div>
+                          <div className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{data.reason}</div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {/* Summary & Recommendation */}
+                <div className="border-t border-gray-200 dark:border-gray-700/50 pt-3 space-y-2">
+                  <p className="text-sm text-gray-700 dark:text-gray-300">{aiRanking.summary}</p>
+                  <p className="text-sm font-medium text-purple-700 dark:text-purple-300">
+                    💡 {aiRanking.recommendation}
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Fund list */}
-          <div className="bg-white dark:bg-[#2a2a2a] rounded-lg shadow overflow-hidden">
+          <div className="bg-white dark:bg-[#2a2a2a] rounded-lg shadow overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700/50">
               <thead className="bg-primary-50 dark:bg-primary-900/40">
                 <tr>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">ISIN</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Fondo</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Categoría</th>
-                  <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">NAV</th>
-                  <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">1Y</th>
-                  <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">TER</th>
-                  <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Acciones</th>
+                  <th className="px-3 md:px-4 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase w-12">Rank</th>
+                  <th className="px-3 md:px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase hidden sm:table-cell">ISIN</th>
+                  <th className="px-3 md:px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Fondo</th>
+                  <th className="px-3 md:px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase hidden lg:table-cell">Categoría</th>
+                  <th className="px-3 md:px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase hidden md:table-cell">NAV</th>
+                  <th className="px-3 md:px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">1Y</th>
+                  <th className="px-3 md:px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase hidden sm:table-cell">TER</th>
+                  <th className="px-3 md:px-4 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Acciones</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
-                {myFunds.map((fund) => (
+                {rankedFunds.map(({ fund, score }, idx) => (
                   <tr
                     key={fund.id}
                     onClick={() => setSelectedId(fund.id === selectedId ? null : fund.id)}
@@ -91,16 +238,23 @@ export function MisFondosView({ topFunds }: Props) {
                         : 'hover:bg-blue-50 dark:hover:bg-primary-900/10'
                     )}
                   >
-                    <td className="px-4 py-3 text-sm font-mono text-gray-600 dark:text-gray-400">{fund.isin}</td>
-                    <td className="px-4 py-3">
+                    <td className="px-3 md:px-4 py-3 text-center">
+                      <span className={clsx('text-sm font-bold', score >= 70 ? 'text-green-600 dark:text-green-400' : score >= 40 ? 'text-yellow-600 dark:text-yellow-400' : 'text-red-600 dark:text-red-400')}>
+                        #{idx + 1}
+                      </span>
+                      <div className="text-[10px] text-gray-400">{score}/100</div>
+                    </td>
+                    <td className="px-3 md:px-4 py-3 text-sm font-mono text-gray-600 dark:text-gray-400 hidden sm:table-cell">{fund.isin}</td>
+                    <td className="px-3 md:px-4 py-3">
                       <div className="text-sm font-medium text-gray-900 dark:text-gray-100">{fund.name}</div>
                       <div className="text-xs text-gray-500">{fund.managementCompany}</div>
+                      <div className="text-xs text-gray-400 font-mono sm:hidden">{fund.isin}</div>
                     </td>
-                    <td className="px-4 py-3 text-sm text-gray-600 dark:text-gray-400">{fund.category}</td>
-                    <td className="px-4 py-3 text-sm text-right font-mono text-gray-900 dark:text-gray-200">
+                    <td className="px-3 md:px-4 py-3 text-sm text-gray-600 dark:text-gray-400 hidden lg:table-cell">{fund.category}</td>
+                    <td className="px-3 md:px-4 py-3 text-sm text-right font-mono text-gray-900 dark:text-gray-200 hidden md:table-cell">
                       {fund.netAssetValue.toFixed(2)} {fund.currency}
                     </td>
-                    <td className="px-4 py-3 text-sm text-right font-mono">
+                    <td className="px-3 md:px-4 py-3 text-sm text-right font-mono">
                       {fund.latestPerformance ? (
                         <span className={clsx(
                           fund.latestPerformance.return1Year >= 0
@@ -112,10 +266,10 @@ export function MisFondosView({ topFunds }: Props) {
                         </span>
                       ) : '—'}
                     </td>
-                    <td className="px-4 py-3 text-sm text-right text-gray-600 dark:text-gray-400">
+                    <td className="px-3 md:px-4 py-3 text-sm text-right text-gray-600 dark:text-gray-400 hidden sm:table-cell">
                       {fund.expenseRatio.toFixed(2)}%
                     </td>
-                    <td className="px-4 py-3 text-center">
+                    <td className="px-3 md:px-4 py-3 text-center">
                       <button
                         onClick={(e) => { e.stopPropagation(); handleRemove(fund.id, fund.name); }}
                         className="p-1.5 rounded hover:bg-red-100 dark:hover:bg-red-900/30 text-red-500 transition-colors"
@@ -269,14 +423,14 @@ function AddFundForm({ onAdd, onCancel }: {
                     {found.category}
                   </span>
                 </div>
-                <div className="grid grid-cols-4 gap-2 text-xs">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
                   <div><span className="text-gray-400">Gestora:</span> <span className="text-gray-700 dark:text-gray-300">{found.managementCompany}</span></div>
                   <div><span className="text-gray-400">NAV:</span> <span className="text-gray-700 dark:text-gray-300">{found.netAssetValue.toFixed(2)} {found.currency}</span></div>
                   <div><span className="text-gray-400">TER:</span> <span className="text-gray-700 dark:text-gray-300">{found.expenseRatio.toFixed(2)}%</span></div>
                   <div><span className="text-gray-400">Riesgo:</span> <span className="text-gray-700 dark:text-gray-300">{found.riskLevel}/7</span></div>
                 </div>
                 {perf && (
-                  <div className="grid grid-cols-3 gap-2 text-xs border-t border-gray-100 dark:border-gray-700/50 pt-2">
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-xs border-t border-gray-100 dark:border-gray-700/50 pt-2">
                     <div><span className="text-gray-400">1A:</span> <span className={perf.return1Year >= 0 ? 'text-green-600' : 'text-red-600'}>{perf.return1Year.toFixed(2)}%</span></div>
                     <div><span className="text-gray-400">3A:</span> <span className={perf.return3Years >= 0 ? 'text-green-600' : 'text-red-600'}>{perf.return3Years.toFixed(2)}%</span></div>
                     <div><span className="text-gray-400">5A:</span> <span className={perf.return5Years >= 0 ? 'text-green-600' : 'text-red-600'}>{perf.return5Years.toFixed(2)}%</span></div>

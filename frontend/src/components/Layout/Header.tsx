@@ -8,10 +8,10 @@ interface Props {
 export default function Header({ isDark, onToggleTheme }: Props) {
   return (
     <header className="bg-white dark:bg-[#2a2a2a] border-b border-gray-200 dark:border-gray-700/50 shadow-sm transition-colors duration-300 flex-shrink-0">
-      <div className="px-6 py-3 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <TrendingUp className="h-8 w-8 text-primary-600 dark:text-primary-400" />
-          <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100">
+      <div className="px-3 py-2 md:px-6 md:py-3 flex items-center justify-between">
+        <div className="flex items-center gap-2 md:gap-3">
+          <TrendingUp className="h-6 w-6 md:h-8 md:w-8 text-primary-600 dark:text-primary-400" />
+          <h1 className="text-lg md:text-xl font-bold text-gray-900 dark:text-gray-100">
             Econom<span className="text-primary-600 dark:text-primary-400">IA</span>
           </h1>
         </div>

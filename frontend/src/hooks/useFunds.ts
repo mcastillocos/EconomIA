@@ -74,9 +74,23 @@ export function useStreamFunds() {
     };
 
     es.onerror = () => {
-      appLog.error('LLM', 'Error en conexión SSE');
-      setState((prev) => ({ ...prev, isStreaming: false, error: 'Error en conexión SSE' }));
+      appLog.warn('LLM', 'SSE no disponible, usando API REST como fallback...');
       es.close();
+      // Fallback to REST API
+      fundsApi.getTopFunds(100)
+        .then((data) => {
+          if (data.length > 0) {
+            setFunds(data);
+            appLog.success('API', `Fallback REST: ${data.length} fondos cargados`);
+            setState((prev) => ({ ...prev, funds: data, isStreaming: false }));
+          } else {
+            setState((prev) => ({ ...prev, isStreaming: false, error: 'Sin datos disponibles' }));
+          }
+        })
+        .catch(() => {
+          appLog.error('API', 'Fallback REST también falló');
+          setState((prev) => ({ ...prev, isStreaming: false, error: 'Error cargando datos' }));
+        });
     };
   }, [setFunds]);
 

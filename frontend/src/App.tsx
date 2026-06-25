@@ -55,7 +55,7 @@ function App() {
 
       <div className="flex flex-1 min-h-0">
         <Sidebar activeView={activeView} onChangeView={handleChangeView} />
-        <main className="flex-1 overflow-y-auto px-6 py-6">
+        <main className="flex-1 overflow-y-auto px-3 py-4 md:px-6 md:py-6 pb-20 md:pb-6">
           <div className="max-w-7xl mx-auto">
             {activeView === 'global' && <GlobalView funds={funds} isLoading={isLoading} />}
             {activeView === 'datos' && <DatosView funds={funds} isLoading={isLoading} />}

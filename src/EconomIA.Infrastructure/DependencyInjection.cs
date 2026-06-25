@@ -27,8 +27,18 @@ public static class DependencyInjection
         services.AddSingleton<IConnectionMultiplexer>(sp =>
             ConnectionMultiplexer.Connect(configuration.GetConnectionString("Redis") ?? "localhost:6379"));
 
-        // Kafka
-        services.Configure<KafkaOptions>(configuration.GetSection("Kafka"));
+        // Kafka (optional — skip if BootstrapServers is empty)
+        var kafkaServers = configuration["Kafka:BootstrapServers"];
+        if (!string.IsNullOrWhiteSpace(kafkaServers))
+        {
+            services.Configure<KafkaOptions>(configuration.GetSection("Kafka"));
+            services.AddSingleton<IEventBus, KafkaEventBus>();
+            services.AddHostedService<KafkaConsumerService>();
+        }
+        else
+        {
+            services.AddSingleton<IEventBus, NoOpEventBus>();
+        }
 
         // Repositories
         services.AddScoped<IFundRepository, FundRepository>();
@@ -36,21 +46,18 @@ public static class DependencyInjection
         // Cache
         services.AddScoped<ICacheService, RedisCacheService>();
 
-        // Event Bus
-        services.AddSingleton<IEventBus, KafkaEventBus>();
-
         // External Services
         services.AddScoped<IMarketDataProvider, SimulatedMarketDataProvider>();
 
         // Domain Services
         services.AddScoped<FundRankingService>();
 
-        // Kafka Consumer
-        services.AddHostedService<KafkaConsumerService>();
-
-        // OpenTelemetry
-        var otlpEndpoint = configuration["OpenTelemetry:OtlpEndpoint"] ?? "http://localhost:4317";
-        services.AddOpenTelemetryObservability(otlpEndpoint);
+        // OpenTelemetry (optional)
+        var otlpEndpoint = configuration["OpenTelemetry:OtlpEndpoint"];
+        if (!string.IsNullOrWhiteSpace(otlpEndpoint))
+        {
+            services.AddOpenTelemetryObservability(otlpEndpoint);
+        }
 
         return services;
     }

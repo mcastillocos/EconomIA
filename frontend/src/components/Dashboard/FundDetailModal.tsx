@@ -105,10 +105,10 @@ export default function FundDetailModal({ fund, onClose }: Props) {
         <div className="sticky top-0 bg-white dark:bg-[#1e1e1e] z-10 px-6 py-4 border-b border-gray-200 dark:border-gray-700/50 flex items-start justify-between">
           <div>
             <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100">{fund.name}</h2>
-            <div className="flex items-center gap-3 mt-1 text-sm text-gray-500 dark:text-gray-400">
-              <span className="font-mono bg-gray-100 dark:bg-gray-800 px-2 py-0.5 rounded">{fund.isin}</span>
-              <span>{fund.managementCompany}</span>
-              <span>{fund.category}</span>
+            <div className="flex flex-wrap items-center gap-2 sm:gap-3 mt-1 text-sm text-gray-500 dark:text-gray-400">
+              <span className="font-mono bg-gray-100 dark:bg-gray-800 px-2 py-0.5 rounded text-xs sm:text-sm">{fund.isin}</span>
+              <span className="text-xs sm:text-sm">{fund.managementCompany}</span>
+              <span className="text-xs sm:text-sm">{fund.category}</span>
             </div>
           </div>
           <button

@@ -18,8 +18,8 @@ export function GlobalView({ funds, isLoading }: Props) {
 
   return (
     <>
-      <div className="mb-6 flex items-center justify-between">
-        <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+      <div className="mb-4 md:mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+        <h2 className="text-xl md:text-2xl font-bold text-gray-900 dark:text-gray-100">
           Top {totalFunds} Fondos de Inversión
         </h2>
         <RiskFilter />
@@ -38,8 +38,8 @@ export function DatosView({ funds, isLoading }: Props) {
 
   return (
     <>
-      <div className="mb-6 flex items-center justify-between">
-        <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+      <div className="mb-4 md:mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+        <h2 className="text-xl md:text-2xl font-bold text-gray-900 dark:text-gray-100">
           Datos — Tabla de Fondos
         </h2>
         <RiskFilter />
@@ -55,11 +55,11 @@ export function DatosView({ funds, isLoading }: Props) {
 export function GraficasView({ funds }: { funds: Fund[] }) {
   return (
     <>
-      <div className="mb-6">
-        <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+      <div className="mb-4 md:mb-6">
+        <h2 className="text-xl md:text-2xl font-bold text-gray-900 dark:text-gray-100">
           Gráficas de Rendimiento
         </h2>
-        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+        <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mt-1">
           Análisis visual del comportamiento de los fondos seleccionados
         </p>
       </div>

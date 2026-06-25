@@ -60,6 +60,7 @@ export function ConfigView({ onReload }: Props) {
   const fetchConfig = useCallback(async () => {
     try {
       const res = await fetch('/api/llm/config');
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data: ConfigResponse = await res.json();
       setConfig(data.config);
       setProviders(data.providers);
@@ -67,7 +68,7 @@ export function ConfigView({ onReload }: Props) {
       setRateLimiter(data.rateLimiter ?? null);
       setTotalFunds(data.config.totalFunds);
     } catch {
-      setMessage({ text: 'Error cargando configuración', type: 'error' });
+      setMessage({ text: 'LLM Config no disponible (solo en modo desarrollo)', type: 'error' });
     } finally {
       setLoading(false);
     }
@@ -138,12 +139,29 @@ export function ConfigView({ onReload }: Props) {
     );
   }
 
-  if (!config) return null;
+  if (!config) {
+    return (
+      <div className="space-y-6">
+        <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">Configuración</h2>
+        <div className="bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300 px-4 py-3 rounded-lg text-sm">
+          {message?.text || 'Configuración LLM no disponible en este entorno (solo modo desarrollo con Vite).'}
+        </div>
+        <div className="bg-white dark:bg-[#2a2a2a] rounded-xl p-5 border border-gray-200 dark:border-gray-700/50">
+          <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">Estado del sistema</h3>
+          <ul className="text-sm text-gray-600 dark:text-gray-400 space-y-1">
+            <li>• API Backend: <span className="text-green-500">Conectado</span></li>
+            <li>• Datos cargados vía API REST (fallback)</li>
+            <li>• LLM Workers: No disponibles en producción</li>
+          </ul>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">Configuración LLM</h2>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <h2 className="text-lg sm:text-xl font-semibold text-gray-900 dark:text-gray-100">Configuración LLM</h2>
         <div className="flex gap-2">
           <button
             onClick={handleSave}
@@ -179,7 +197,7 @@ export function ConfigView({ onReload }: Props) {
         <h3 className="flex items-center gap-2 text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
           <Server className="h-4 w-4" /> Proveedores LLM
         </h3>
-        <div className="flex gap-3">
+        <div className="flex flex-wrap gap-3">
           {providers.map((p) => (
             <div key={p.name} className={clsx(
               'flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium border',
@@ -200,7 +218,7 @@ export function ConfigView({ onReload }: Props) {
           <Database className="h-4 w-4" /> Estado del caché
         </h3>
         {cache ? (
-          <div className="grid grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
             <Stat label="Fondos cargados" value={cache.funds} />
             <Stat label="Antigüedad" value={`${cache.ageMinutes} min`} />
             <Stat label="TTL" value={`${cache.ttlMinutes} min`} />

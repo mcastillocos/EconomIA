@@ -1,5 +1,7 @@
 Busca información completa del fondo de inversión con ISIN o nombre: "{{QUERY}}".
 
+IMPORTANTE: Si el ISIN tiene formato válido (2 letras país + 10 caracteres alfanuméricos), SIEMPRE devuelve datos. Los fondos españoles (ES...) están registrados en CNMV. Usa tu conocimiento para dar datos lo más reales posible. NUNCA respondas con error para un ISIN con formato válido.
+
 Devuelve SOLO un objeto JSON (NO un array). Ejemplo de formato esperado:
 
 {

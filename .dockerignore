@@ -6,4 +6,5 @@
 **/.vs/
 **/docs/
 **/*.md
+!frontend/server/prompts/*.md
 **/.env*

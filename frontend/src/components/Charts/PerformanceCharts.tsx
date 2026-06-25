@@ -46,8 +46,8 @@ function TopPerformersChart({ funds }: { funds: Fund[] }) {
           <YAxis
             dataKey="name"
             type="category"
-            width={100}
-            fontSize={11}
+            width={80}
+            fontSize={10}
             interval={0}
             tick={{ fill: '#9ca3af' }}
           />
