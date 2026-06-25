@@ -34,6 +34,10 @@ if (-not $SkipDocker) {
     Write-Host "  Esperando a SQL Server (20s)..." -ForegroundColor DarkGray
     Start-Sleep -Seconds 20
     Write-Host "  Docker OK" -ForegroundColor Green
+
+    # Ejecutar SQL scripts pendientes automáticamente
+    Write-Host "  Verificando scripts SQL pendientes..." -ForegroundColor DarkGray
+    & (Join-Path $PSScriptRoot "execute_scripts.ps1")
 } else {
     Write-Host "[1/3] Docker SKIP" -ForegroundColor DarkGray
 }
@@ -68,14 +72,19 @@ if (-not $SkipFrontend) {
         Pop-Location
     }
 
-    $frontendJob = Start-Process -FilePath "npm" `
-        -ArgumentList "run", "dev" `
-        -WorkingDirectory $frontendDir `
-        -WindowStyle Hidden `
-        -PassThru
+    $npmPath = (Get-Command npm -ErrorAction SilentlyContinue).Source
+    if (-not $npmPath) {
+        Write-Host "  ERROR: npm no encontrado en PATH" -ForegroundColor Red
+    } else {
+        $frontendJob = Start-Process -FilePath "cmd.exe" `
+            -ArgumentList "/c", "npm run dev" `
+            -WorkingDirectory $frontendDir `
+            -WindowStyle Hidden `
+            -PassThru
 
-    $frontendJob.Id | Out-File (Join-Path $root ".pid_frontend") -Force
-    Write-Host "  Frontend PID: $($frontendJob.Id) -> http://localhost:3000" -ForegroundColor Green
+        $frontendJob.Id | Out-File (Join-Path $root ".pid_frontend") -Force
+        Write-Host "  Frontend PID: $($frontendJob.Id) -> http://localhost:3000" -ForegroundColor Green
+    }
 } else {
     Write-Host "[3/3] Frontend SKIP" -ForegroundColor DarkGray
 }

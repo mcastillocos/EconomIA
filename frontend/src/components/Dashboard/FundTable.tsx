@@ -1,9 +1,11 @@
 import type { Fund } from '../../types/fund';
 import { RiskLevel, FundRating } from '../../types/fund';
+import { useState, useMemo } from 'react';
 import clsx from 'clsx';
 
 interface Props {
   funds: Fund[];
+  onSelectFund?: (fund: Fund) => void;
 }
 
 const riskLabels: Record<number, string> = {
@@ -34,46 +36,81 @@ function RatingStars({ rating }: { rating: FundRating }) {
   );
 }
 
-export default function FundTable({ funds }: Props) {
+export default function FundTable({ funds, onSelectFund }: Props) {
+  const [isinFilter, setIsinFilter] = useState('');
+
+  const filtered = useMemo(() => {
+    if (!isinFilter.trim()) return funds;
+    const q = isinFilter.trim().toUpperCase();
+    return funds.filter((f) => f.isin.toUpperCase().includes(q));
+  }, [funds, isinFilter]);
+
   return (
-    <div className="bg-white rounded-lg shadow overflow-hidden">
+    <div className="bg-white dark:bg-[#2a2a2a] rounded-lg shadow overflow-hidden transition-colors duration-300">
+      {/* ISIN Filter */}
+      <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-700/50 flex items-center gap-3">
+        <label className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase whitespace-nowrap">
+          Filtrar ISIN
+        </label>
+        <input
+          type="text"
+          placeholder="Ej: IE00B4L5Y983"
+          value={isinFilter}
+          onChange={(e) => setIsinFilter(e.target.value)}
+          className="px-3 py-1.5 text-sm rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-[#1e1e1e] text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 w-52"
+        />
+        {isinFilter && (
+          <span className="text-xs text-gray-400 dark:text-gray-500">
+            {filtered.length} de {funds.length} fondos
+          </span>
+        )}
+      </div>
+
       <div className="overflow-x-auto">
-        <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gray-50">
+        <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700/50">
+          <thead className="bg-primary-50 dark:bg-primary-900/40">
             <tr>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">#</th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Fondo</th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Categoría</th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Riesgo</th>
-              <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">NAV</th>
-              <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">1Y Return</th>
-              <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Rating</th>
-              <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">TER</th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">#</th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Fondo</th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">ISIN</th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Categoría</th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase whitespace-nowrap min-w-[120px]">Riesgo</th>
+              <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">NAV</th>
+              <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">1Y Return</th>
+              <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Rating</th>
+              <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">TER</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-gray-100">
-            {funds.map((fund) => (
-              <tr key={fund.id} className="hover:bg-blue-50 transition-colors cursor-pointer">
-                <td className="px-4 py-3 text-sm font-medium text-gray-900">
+          <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
+            {filtered.map((fund) => (
+              <tr
+                key={fund.id}
+                onClick={() => onSelectFund?.(fund)}
+                className="hover:bg-blue-50 dark:hover:bg-primary-900/20 transition-colors cursor-pointer"
+              >
+                <td className="px-4 py-3 text-sm font-medium text-gray-900 dark:text-gray-100">
                   {fund.rankingPosition}
                 </td>
                 <td className="px-4 py-3">
-                  <div className="text-sm font-medium text-gray-900">{fund.name}</div>
-                  <div className="text-xs text-gray-500">{fund.isin} · {fund.managementCompany}</div>
+                  <div className="text-sm font-medium text-gray-900 dark:text-gray-100">{fund.name}</div>
+                  <div className="text-xs text-gray-500 dark:text-gray-500">{fund.managementCompany}</div>
                 </td>
-                <td className="px-4 py-3 text-sm text-gray-600">{fund.category}</td>
-                <td className="px-4 py-3">
+                <td className="px-4 py-3 text-sm font-mono text-gray-600 dark:text-gray-400 whitespace-nowrap">
+                  {fund.isin}
+                </td>
+                <td className="px-4 py-3 text-sm text-gray-600 dark:text-gray-400">{fund.category}</td>
+                <td className="px-4 py-3 whitespace-nowrap">
                   <span className={clsx('px-2 py-0.5 text-xs rounded-full font-medium', riskColors[fund.riskLevel])}>
                     {riskLabels[fund.riskLevel]}
                   </span>
                 </td>
-                <td className="px-4 py-3 text-sm text-right font-mono">
+                <td className="px-4 py-3 text-sm text-right font-mono text-gray-900 dark:text-gray-200">
                   {fund.netAssetValue.toFixed(2)} {fund.currency}
                 </td>
                 <td className="px-4 py-3 text-sm text-right font-mono">
                   {fund.latestPerformance ? (
                     <span className={clsx(
-                      fund.latestPerformance.return1Year >= 0 ? 'text-green-600' : 'text-red-600'
+                      fund.latestPerformance.return1Year >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'
                     )}>
                       {fund.latestPerformance.return1Year >= 0 ? '+' : ''}
                       {fund.latestPerformance.return1Year.toFixed(2)}%
@@ -83,7 +120,7 @@ export default function FundTable({ funds }: Props) {
                 <td className="px-4 py-3 text-center text-sm">
                   <RatingStars rating={fund.rating} />
                 </td>
-                <td className="px-4 py-3 text-sm text-right text-gray-600">
+                <td className="px-4 py-3 text-sm text-right text-gray-600 dark:text-gray-400">
                   {fund.expenseRatio.toFixed(2)}%
                 </td>
               </tr>

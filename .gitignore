@@ -23,6 +23,9 @@ Thumbs.db
 # PIDs (start/stop scripts)
 .pid_*
 
+# SQL scripts state control
+.scripts_state/
+
 # Secrets
 .env
 .env.*
