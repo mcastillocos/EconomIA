@@ -1,20 +1,32 @@
 # EconomIA
 
-Plataforma de análisis de fondos de inversión en **tiempo real**. Muestra un ranking de los 100 mejores fondos del mercado orientados a inversores medios, con actualización automática de precios vía SignalR.
+Plataforma de análisis de fondos de inversión en **tiempo real**. Muestra un ranking dinámico de los mejores fondos del mercado europeo orientados a inversores medios, con datos generados por LLM (GPT-5.5, GPT-5.4, Claude) y actualización en streaming vía SSE.
 
 ## Stack tecnológico
 
 | Capa | Tecnología |
 |------|-----------|
 | Backend | .NET 10, C#, Web API, SignalR, MediatR (CQRS), DDD, Arquitectura Hexagonal |
-| Frontend | React 19, TypeScript, Vite, TailwindCSS, Zustand, Recharts |
+| Frontend | React 19, TypeScript, Vite 6.4, TailwindCSS 3.4, Zustand, Recharts, @tanstack/react-query |
+| LLM Providers | Azure OpenAI (GPT-5.5, GPT-5.4), Anthropic Claude Opus 4.7 (round-robin + failover) |
+| Rate Limiting | TokenBucketLimiter por TPM (patrón CobolForge) |
 | Base de datos | SQL Server 2022 |
-| Cache | Redis 7 |
+| Cache | Redis 7 + caché in-memory LLM con TTL configurable |
 | Mensajería | Apache Kafka |
 | Secretos | HashiCorp Vault |
 | Observabilidad | OpenTelemetry → Grafana + Loki + Tempo + Prometheus |
 | Orquestación | Docker Compose (dev) / K3d - Kubernetes (staging/prod) |
-| Testing | xUnit, FluentAssertions, NSubstitute, Bogus, Testcontainers |
+| Testing | xUnit (.NET) + Vitest 4.1 + @testing-library/react (Frontend, 53 tests) |
+
+## Características principales
+
+- **Streaming SSE en tiempo real**: los fondos llegan uno a uno al dashboard vía Server-Sent Events
+- **Multi-LLM con round-robin**: distribuye carga entre GPT-5.5, GPT-5.4 y Claude con failover automático
+- **Rate Limiter por TPM**: controla tokens/minuto con ventana deslizante al 90% del límite real (450K TPM)
+- **Configuración dinámica**: todos los parámetros (workers, reintentos, TPM, batch size) editables desde la UI sin reiniciar
+- **Estadísticas y costes**: tokens reales por proveedor con coste calculado en € (precios CobolForge)
+- **Mis Fondos**: añade fondos propios y compáralos con el Top N (percentiles, radar, barras)
+- **Dark mode**: tema oscuro por defecto con toggle
 
 ## Estructura del proyecto
 
@@ -30,10 +42,27 @@ EconomIA/
 │   ├── EconomIA.Application.Tests/ # Tests de handlers y behaviors
 │   ├── EconomIA.Infrastructure.Tests/
 │   └── EconomIA.API.Tests/
-├── frontend/                       # React dashboard
+├── frontend/
+│   ├── server/                     # Vite middleware: LLM proxy, rate limiter, SSE
+│   │   ├── llmPlugin.ts            # Plugin principal: workers, caché, endpoints
+│   │   ├── tokenBucketLimiter.ts   # Rate limiter por TPM (patrón CobolForge)
+│   │   └── prompts/                # Templates LLM (system, batch, lookup)
+│   ├── src/
+│   │   ├── components/
+│   │   │   ├── Views/              # GlobalView, MisFondosView, ConfigView, StatsView, LogsView
+│   │   │   ├── Dashboard/          # FundTable, FundDetailModal, WhyTheBest
+│   │   │   ├── Charts/             # PerformanceCharts (Recharts)
+│   │   │   ├── Layout/             # Header, Sidebar
+│   │   │   └── Filters/            # RiskFilter
+│   │   ├── store/                  # Zustand: fundStore, logStore, myFundsStore, configStore
+│   │   ├── hooks/                  # useStreamFunds (SSE), useTheme, useSignalR
+│   │   └── test/                   # 8 archivos, 53 tests (Vitest + Testing Library)
+│   └── vite.config.ts
 ├── docker/                         # Dockerfiles + docker-compose
+├── sql/                            # Esquema SQL + seeds
 ├── k8s/                            # Manifiestos Kubernetes (K3d)
 ├── observability/                  # Config OpenTelemetry, Grafana, Prometheus
+├── docs/                           # Wiki del proyecto
 └── scripts/                        # Scripts de arranque/parada
 ```
 
@@ -89,6 +118,8 @@ npm run dev
 
 ## Endpoints principales
 
+### Backend (.NET API)
+
 ```
 GET  /api/funds/top/{count}       → Top N fondos (default 100)
 GET  /api/funds/{id}              → Detalle de un fondo
@@ -96,6 +127,17 @@ GET  /api/funds/by-risk/{level}   → Fondos filtrados por nivel de riesgo
 POST /api/funds/{id}/price        → Actualizar precio de un fondo
 POST /api/funds/refresh           → Refrescar datos de mercado
 GET  /health                      → Health check
+```
+
+### Frontend (Vite Middleware — LLM API)
+
+```
+GET  /api/llm/funds/stream        → SSE streaming de fondos (1 por worker)
+GET  /api/llm/funds               → JSON con todos los fondos (batch)
+GET  /api/llm/lookup?q=           → Buscar un fondo concreto por nombre/ISIN
+GET  /api/llm/config              → Config actual + providers + caché + stats
+POST /api/llm/config              → Actualizar config en caliente (JSON parcial)
+POST /api/llm/reload              → Invalidar caché + resetear stats
 ```
 
 ### SignalR Hubs
@@ -108,15 +150,50 @@ GET  /health                      → Health check
 ## Tests
 
 ```powershell
-# Ejecutar todos los tests
+# Backend (.NET)
 dotnet test
+
+# Frontend (Vitest — 53 tests, 8 archivos)
+cd frontend
+npx vitest run
 
 # Solo tests del dominio
 dotnet test tests/EconomIA.Domain.Tests
-
-# Solo tests de application
-dotnet test tests/EconomIA.Application.Tests
 ```
+
+## Vistas del Dashboard
+
+| Vista | Descripción |
+|-------|-------------|
+| **Global** | Ranking Top N con tabla, métricas clave (WhyTheBest), gráficas |
+| **Datos** | Tabla detallada de fondos con filtro de riesgo |
+| **Gráficas** | Charts de rendimiento (Recharts) |
+| **Mis Fondos** | Añade fondos propios, compáralos vs Top N (radar, barras, percentiles) |
+| **Logs** | Logs en tiempo real con filtros y búsqueda |
+| **Estadísticas** | Uso por proveedor LLM, tokens, costes en €, precios por modelo |
+| **Config** | Proveedores, caché, rate limiter, workers, reintentos — todo editable |
+
+## Variables de entorno
+
+```env
+AZURE_OPENAI_API_KEY0=...
+AZURE_OPENAI_ENDPOINT0=https://oai-genai-mm-dev.openai.azure.com/
+AZURE_OPENAI_DEPLOYMENT0=gpt-5.5
+AZURE_OPENAI_API_VERSION0=2024-08-01-preview
+CLAUDE_API_KEY=...
+CLAUDE_ENDPOINT=...
+CLAUDE_MODEL1=claude-opus-4-7
+```
+
+## Wiki
+
+Documentación detallada en la [Wiki de GitHub](https://github.com/mcastillocos/EconomIA/wiki):
+
+- [Arquitectura LLM](https://github.com/mcastillocos/EconomIA/wiki/LLM-Architecture) — Providers, rate limiting, retry, SSE streaming
+- [Configuración dinámica](https://github.com/mcastillocos/EconomIA/wiki/Dynamic-Configuration) — Parámetros editables en caliente
+- [Costes y estadísticas](https://github.com/mcastillocos/EconomIA/wiki/Costs-and-Stats) — Cálculo de costes por proveedor en €
+- [TokenBucketLimiter](https://github.com/mcastillocos/EconomIA/wiki/TokenBucketLimiter) — Rate limiter TPM (patrón CobolForge)
+- [Vistas del Dashboard](https://github.com/mcastillocos/EconomIA/wiki/Dashboard-Views) — Las 7 vistas del frontend
 
 ## Arquitectura
 
