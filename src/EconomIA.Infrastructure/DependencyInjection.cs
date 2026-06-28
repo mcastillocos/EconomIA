@@ -12,6 +12,7 @@ using EconomIA.Infrastructure.Telemetry;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Http.Resilience;
 using StackExchange.Redis;
 
 namespace EconomIA.Infrastructure;
@@ -66,11 +67,30 @@ public static class DependencyInjection
         // Cache
         services.AddScoped<ICacheService, RedisCacheService>();
 
-        // External Services
-        services.AddScoped<IMarketDataProvider, SimulatedMarketDataProvider>();
+        // External Services - Market Data with resilience
+        services.AddHttpClient<IMarketDataProvider, YahooFinanceProvider>()
+            .AddStandardResilienceHandler(options =>
+            {
+                options.Retry.MaxRetryAttempts = 3;
+                options.Retry.Delay = TimeSpan.FromMilliseconds(500);
+                options.CircuitBreaker.SamplingDuration = TimeSpan.FromSeconds(30);
+                options.CircuitBreaker.MinimumThroughput = 5;
+                options.AttemptTimeout.Timeout = TimeSpan.FromSeconds(10);
+                options.TotalRequestTimeout.Timeout = TimeSpan.FromSeconds(30);
+            });
+        // Fallback: simulated provider when Yahoo is unavailable
+        services.AddScoped<SimulatedMarketDataProvider>();
 
-        // LLM Service
-        services.AddHttpClient<ILlmService, LlmService>();
+        // LLM Service with resilience
+        services.AddHttpClient<ILlmService, LlmService>()
+            .AddStandardResilienceHandler(options =>
+            {
+                options.Retry.MaxRetryAttempts = 2;
+                options.Retry.Delay = TimeSpan.FromSeconds(1);
+                options.AttemptTimeout.Timeout = TimeSpan.FromSeconds(60);
+                options.TotalRequestTimeout.Timeout = TimeSpan.FromSeconds(120);
+                options.CircuitBreaker.SamplingDuration = TimeSpan.FromSeconds(60);
+            });
 
         // Agents
         services.AddScoped<IAgent, CompanyAnalysisAgent>();

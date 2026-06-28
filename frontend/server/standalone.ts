@@ -3,7 +3,7 @@
  * Replica la funcionalidad del llmPlugin de Vite para entornos de producción.
  */
 import express from 'express';
-import { readFileSync } from 'fs';
+import { readFileSync, existsSync, writeFileSync } from 'fs';
 import { resolve, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import { TokenBucketLimiter, estimateTokens } from './tokenBucketLimiter';
@@ -140,6 +140,7 @@ interface LLMProvider {
   name: string;
   call: (sys: string, usr: string, max: number) => Promise<LLMResult>;
   available: () => boolean;
+  enabled: boolean;
 }
 
 const LLM_PROVIDERS: LLMProvider[] = [
@@ -147,18 +148,67 @@ const LLM_PROVIDERS: LLMProvider[] = [
     name: 'GPT-5.5',
     call: (sys, usr, max) => callAzureOpenAI(sys, usr, max),
     available: () => !!(process.env.AZURE_OPENAI_API_KEY0 && process.env.AZURE_OPENAI_ENDPOINT0 && process.env.AZURE_OPENAI_DEPLOYMENT0),
+    enabled: true,
   },
   {
     name: 'GPT-5.4',
     call: (sys, usr, max) => callAzureOpenAI(sys, usr, max, 'gpt-5.4'),
     available: () => !!(process.env.AZURE_OPENAI_API_KEY0 && process.env.AZURE_OPENAI_ENDPOINT0),
+    enabled: true,
   },
   {
     name: 'Claude',
     call: (sys, usr, max) => callClaude(sys, usr, max),
     available: () => !!(process.env.CLAUDE_API_KEY && process.env.CLAUDE_ENDPOINT),
+    enabled: true,
   },
 ];
+
+// ── Provider state persistence ─────────────────────────────────────────
+
+const PROVIDERS_STATE_FILE = resolve(__dirname, '..', '.llm-providers-state.json');
+
+interface ProviderState {
+  enabled: Record<string, boolean>;
+  deleted: string[];
+}
+
+let deletedProviders: string[] = [];
+
+function loadProviderState(): ProviderState {
+  try {
+    if (existsSync(PROVIDERS_STATE_FILE)) {
+      const raw = JSON.parse(readFileSync(PROVIDERS_STATE_FILE, 'utf-8'));
+      return { enabled: raw.enabled ?? {}, deleted: raw.deleted ?? [] };
+    }
+  } catch { /* ignore */ }
+  return { enabled: {}, deleted: [] };
+}
+
+function saveProviderState() {
+  const state: ProviderState = {
+    enabled: Object.fromEntries(LLM_PROVIDERS.map(p => [p.name, p.enabled])),
+    deleted: deletedProviders,
+  };
+  writeFileSync(PROVIDERS_STATE_FILE, JSON.stringify(state, null, 2));
+}
+
+function restoreProviderState() {
+  const state = loadProviderState();
+  deletedProviders = state.deleted;
+  for (const name of state.deleted) {
+    const idx = LLM_PROVIDERS.findIndex(p => p.name === name);
+    if (idx !== -1) LLM_PROVIDERS.splice(idx, 1);
+  }
+  for (const provider of LLM_PROVIDERS) {
+    if (provider.name in state.enabled) {
+      provider.enabled = state.enabled[provider.name];
+    }
+  }
+  console.log(`[LLM] Provider state restored: ${LLM_PROVIDERS.map(p => `${p.name}(${p.enabled ? 'on' : 'off'})`).join(', ')}${state.deleted.length ? ` | deleted: ${state.deleted.join(', ')}` : ''}`);
+}
+
+restoreProviderState();
 
 let providerRotation = 0;
 
@@ -259,8 +309,8 @@ function isRetryable(err: any): boolean {
 }
 
 async function callLLM(sys: string, usr: string, maxTokens: number): Promise<string> {
-  const available = LLM_PROVIDERS.filter((p) => p.available());
-  if (available.length === 0) throw new Error('No LLM providers available');
+  const available = LLM_PROVIDERS.filter((p) => p.enabled && p.available());
+  if (available.length === 0) throw new Error('No LLM providers available (all disabled or missing keys)');
 
   const limiter = getSharedLimiter();
   const estimated = estimateTokens(sys + usr) + maxTokens;
@@ -402,6 +452,7 @@ app.get('/api/llm/config', (_req: express.Request, res: express.Response) => {
   const providers = LLM_PROVIDERS.map((p) => ({
     name: p.name,
     available: p.available(),
+    enabled: p.enabled,
     endpoint: p.name === 'Claude'
       ? (process.env.CLAUDE_ENDPOINT || '').replace(/\/anthropic.*/, '/...')
       : (process.env.AZURE_OPENAI_ENDPOINT0 || '').replace(/\/$/, ''),
@@ -431,6 +482,47 @@ app.post('/api/llm/config', (req, res) => {
   if ('rateLimitTpm' in updates) sharedLimiter = null;
   console.log('[LLM] Config actualizada:', runtimeConfig);
   res.json({ ok: true, config: { ...runtimeConfig } });
+});
+
+// Providers management
+app.patch('/api/llm/providers', (req, res) => {
+  const { name, enabled } = req.body;
+  const provider = LLM_PROVIDERS.find(p => p.name === name);
+  if (!provider) return res.status(404).json({ error: `Provider '${name}' not found` });
+  provider.enabled = !!enabled;
+  console.log(`[LLM] Provider ${name} ${enabled ? 'enabled' : 'disabled'}`);
+  saveProviderState();
+  res.json({ ok: true, name, enabled: provider.enabled });
+});
+
+app.post('/api/llm/providers', (req, res) => {
+  const { name, type } = req.body;
+  if (!name || !type) return res.status(400).json({ error: 'name and type are required' });
+  if (LLM_PROVIDERS.find(p => p.name === name)) return res.status(409).json({ error: `Provider '${name}' already exists` });
+  const newProvider: LLMProvider = {
+    name,
+    call: type === 'claude'
+      ? (sys, usr, max) => callClaude(sys, usr, max)
+      : (sys, usr, max) => callAzureOpenAI(sys, usr, max),
+    available: () => true,
+    enabled: true,
+  };
+  LLM_PROVIDERS.push(newProvider);
+  deletedProviders = deletedProviders.filter(n => n !== name);
+  console.log(`[LLM] Provider added: ${name} (${type})`);
+  saveProviderState();
+  res.json({ ok: true, name, type });
+});
+
+app.delete('/api/llm/providers', (req, res) => {
+  const { name } = req.body;
+  const idx = LLM_PROVIDERS.findIndex(p => p.name === name);
+  if (idx === -1) return res.status(404).json({ error: `Provider '${name}' not found` });
+  LLM_PROVIDERS.splice(idx, 1);
+  if (!deletedProviders.includes(name)) deletedProviders.push(name);
+  console.log(`[LLM] Provider removed: ${name}`);
+  saveProviderState();
+  res.json({ ok: true, name });
 });
 
 // Reload

@@ -64,6 +64,6 @@ jobs:
             sed -i 's/^            //' docker/.env
 
             docker compose -f docker/docker-compose.azure.yml --env-file docker/.env --profile db --profile core --profile kafka build --no-cache
-            docker compose -f docker/docker-compose.azure.yml --env-file docker/.env --profile db --profile core --profile kafka up -d
+            docker compose -f docker/docker-compose.azure.yml --env-file docker/.env --profile db --profile core --profile kafka up -d --force-recreate
             docker image prune -f
             echo "Deploy completado: $(date)"
