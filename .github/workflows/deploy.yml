@@ -76,11 +76,13 @@ jobs:
             docker compose -f docker/docker-compose.azure.yml --env-file docker/.env --profile db --profile core --profile kafka build --no-cache
 
             # Levantar infra (db, kafka, redis) — sin force-recreate (son imágenes externas)
-            docker compose -f docker/docker-compose.azure.yml --env-file docker/.env --profile db --profile kafka up -d --wait
+            docker compose -f docker/docker-compose.azure.yml --env-file docker/.env --profile db --profile core --profile kafka up -d --wait
 
-            # Levantar core (api, frontend, llm) con force-recreate para usar imágenes nuevas
-            # Necesita --profile db --profile kafka porque economia-api tiene depends_on: kafka
-            docker compose -f docker/docker-compose.azure.yml --env-file docker/.env --profile db --profile core --profile kafka up -d --force-recreate --wait
+            # Recrear solo los servicios de app (no infra) para usar imágenes nuevas
+            docker compose -f docker/docker-compose.azure.yml --env-file docker/.env --profile db --profile core --profile kafka up -d --force-recreate --no-deps economia-api economia-frontend economia-llm
+            
+            # Esperar a que estén healthy
+            docker compose -f docker/docker-compose.azure.yml --env-file docker/.env --profile db --profile core --profile kafka up -d --wait
 
             docker image prune -f
             echo "Deploy completado: $(date)"
