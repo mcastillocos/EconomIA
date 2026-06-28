@@ -78,6 +78,10 @@ public static class DependencyInjection
         services.AddScoped<IAgent, DailyNewsAgent>();
         services.AddScoped<IAgent, ScreenerAgent>();
         services.AddScoped<IAgent, PortfolioBriefingAgent>();
+        services.AddScoped<IAgent, EarningsCallAgent>();
+        services.AddScoped<IAgent, AnnualReportReaderAgent>();
+        services.AddScoped<IAgent, DataValidationAgent>();
+        services.AddScoped<IAgent, ComparisonAgent>();
         services.AddScoped<IAgentService, AgentService>();
 
         // Domain Services
