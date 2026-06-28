@@ -19,6 +19,9 @@ interface LLMConfig {
 interface Provider {
   name: string;
   available: boolean;
+  endpoint?: string;
+  model?: string;
+  deployment?: string;
 }
 
 interface CacheInfo {
@@ -55,6 +58,7 @@ export function ConfigView({ onReload }: Props) {
   const [saving, setSaving] = useState(false);
   const [reloading, setReloading] = useState(false);
   const [message, setMessage] = useState<{ text: string; type: 'ok' | 'error' } | null>(null);
+  const [selectedProvider, setSelectedProvider] = useState<string | null>(null);
   const setTotalFunds = useConfigStore((s) => s.setTotalFunds);
 
   const fetchConfig = useCallback(async () => {
@@ -199,17 +203,74 @@ export function ConfigView({ onReload }: Props) {
         </h3>
         <div className="flex flex-wrap gap-3">
           {providers.map((p) => (
-            <div key={p.name} className={clsx(
-              'flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium border',
+            <button key={p.name} onClick={() => setSelectedProvider(selectedProvider === p.name ? null : p.name)} className={clsx(
+              'flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium border cursor-pointer transition-all',
               p.available
                 ? 'bg-green-50 border-green-200 text-green-700 dark:bg-green-900/20 dark:border-green-800 dark:text-green-400'
-                : 'bg-gray-50 border-gray-200 text-gray-400 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-500'
+                : 'bg-gray-50 border-gray-200 text-gray-400 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-500',
+              selectedProvider === p.name && 'ring-2 ring-blue-500'
             )}>
               <span className={clsx('h-2 w-2 rounded-full', p.available ? 'bg-green-500' : 'bg-gray-400')} />
               {p.name}
-            </div>
+            </button>
           ))}
         </div>
+
+        {/* Provider detail panel */}
+        {selectedProvider && (() => {
+          const p = providers.find(pr => pr.name === selectedProvider);
+          if (!p) return null;
+          return (
+            <div className="mt-4 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 space-y-3">
+              <div className="flex justify-between items-center">
+                <h4 className="text-sm font-medium text-gray-700 dark:text-gray-200">{p.name}</h4>
+                <span className={clsx('text-xs px-2 py-0.5 rounded-full', p.available ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400')}>
+                  {p.available ? 'Conectado' : 'No disponible'}
+                </span>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+                <div>
+                  <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">Endpoint</label>
+                  <input
+                    type="text"
+                    value={p.endpoint || ''}
+                    readOnly
+                    className="w-full px-3 py-1.5 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-300 text-xs"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">{p.name.includes('Claude') ? 'Model' : 'Deployment'}</label>
+                  <input
+                    type="text"
+                    value={p.model || p.deployment || ''}
+                    readOnly
+                    className="w-full px-3 py-1.5 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-300 text-xs"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">API Key</label>
+                  <input
+                    type="password"
+                    value={p.available ? '••••••••••••••••' : ''}
+                    readOnly
+                    className="w-full px-3 py-1.5 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-300 text-xs"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">Estado</label>
+                  <p className="text-xs text-gray-600 dark:text-gray-400 py-1.5">
+                    {p.available ? '✅ Operativo — key válida detectada' : '❌ Sin API key — configurar en variables de entorno'}
+                  </p>
+                </div>
+              </div>
+              {!p.available && (
+                <p className="text-xs text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 px-3 py-2 rounded">
+                  Para activar este provider, configura las variables de entorno correspondientes en el servidor (AZURE_OPENAI_API_KEY0 / CLAUDE_API_KEY).
+                </p>
+              )}
+            </div>
+          );
+        })()}
       </section>
 
       {/* Cache Status */}

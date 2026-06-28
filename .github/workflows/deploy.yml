@@ -50,7 +50,20 @@ jobs:
           key: ${{ secrets.AZURE_SSH_KEY }}
           script: |
             cd /home/${{ secrets.AZURE_USER }}/economia
-            docker compose -f docker/docker-compose.azure.yml --profile db --profile core --profile kafka build --no-cache
-            docker compose -f docker/docker-compose.azure.yml --profile db --profile core --profile kafka up -d
+
+            # Create .env with LLM secrets for docker compose
+            cat > docker/.env <<'ENVEOF'
+            AZURE_OPENAI_API_KEY0=${{ secrets.AZURE_OPENAI_API_KEY0 }}
+            AZURE_OPENAI_ENDPOINT0=${{ secrets.AZURE_OPENAI_ENDPOINT0 }}
+            AZURE_OPENAI_DEPLOYMENT0=gpt-5.5
+            AZURE_OPENAI_API_VERSION0=2024-08-01-preview
+            CLAUDE_API_KEY=${{ secrets.CLAUDE_API_KEY }}
+            CLAUDE_ENDPOINT=${{ secrets.CLAUDE_ENDPOINT }}
+            CLAUDE_MODEL1=claude-opus-4-7
+            ENVEOF
+            sed -i 's/^            //' docker/.env
+
+            docker compose -f docker/docker-compose.azure.yml --env-file docker/.env --profile db --profile core --profile kafka build --no-cache
+            docker compose -f docker/docker-compose.azure.yml --env-file docker/.env --profile db --profile core --profile kafka up -d
             docker image prune -f
             echo "Deploy completado: $(date)"

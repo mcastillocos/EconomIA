@@ -662,6 +662,11 @@ export function llmApiPlugin(): Plugin {
           const providers = LLM_PROVIDERS.map((p) => ({
             name: p.name,
             available: p.available(env),
+            endpoint: p.name === 'Claude'
+              ? (env.CLAUDE_ENDPOINT || '').replace(/\/anthropic.*/, '/...')
+              : (env.AZURE_OPENAI_ENDPOINT0 || '').replace(/\/$/, ''),
+            model: p.name === 'Claude' ? (env.CLAUDE_MODEL1 || 'claude-opus-4-7') : undefined,
+            deployment: p.name !== 'Claude' ? (p.name === 'GPT-5.4' ? 'gpt-5.4' : (env.AZURE_OPENAI_DEPLOYMENT0 || 'gpt-5.5')) : undefined,
           }));
           const cacheInfo = fundCache
             ? {
