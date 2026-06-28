@@ -64,6 +64,12 @@ jobs:
             sed -i 's/^            //' docker/.env
 
             docker compose -f docker/docker-compose.azure.yml --env-file docker/.env --profile db --profile core --profile kafka build --no-cache
-            docker compose -f docker/docker-compose.azure.yml --env-file docker/.env --profile db --profile core --profile kafka up -d --force-recreate
+
+            # Primero levantar infra (db, kafka, redis) y esperar healthy
+            docker compose -f docker/docker-compose.azure.yml --env-file docker/.env --profile db --profile kafka up -d --force-recreate --wait
+
+            # Luego levantar core (api, frontend, llm) que dependen de infra
+            docker compose -f docker/docker-compose.azure.yml --env-file docker/.env --profile core up -d --force-recreate --wait
+
             docker image prune -f
             echo "Deploy completado: $(date)"
