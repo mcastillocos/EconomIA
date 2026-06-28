@@ -229,7 +229,7 @@ export function MisFondosView({ topFunds }: Props) {
               <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
                 {rankedFunds.map(({ fund, score }, idx) => (
                   <tr
-                    key={fund.id}
+                    key={`${fund.id}-${idx}`}
                     onClick={() => setSelectedId(fund.id === selectedId ? null : fund.id)}
                     className={clsx(
                       'transition-colors cursor-pointer',

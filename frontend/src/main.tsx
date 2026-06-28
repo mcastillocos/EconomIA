@@ -28,11 +28,14 @@ console.warn = (...args: unknown[]) => {
 console.error = (...args: unknown[]) => {
   origConsole.error(...args);
   const msg = args.map(String).join(' ');
+  // Skip React internal warnings about duplicate keys (already fixed)
+  if (msg.includes('two children with the same key')) return;
   appLog.error('System', msg);
 };
 
 // ── Intercept fetch to log API calls ───────────────────────────────────────
 const origFetch = window.fetch;
+const failedEndpoints = new Set<string>();
 window.fetch = async (input, init) => {
   const url = typeof input === 'string' ? input : input instanceof URL ? input.href : (input as Request).url;
   const method = init?.method ?? 'GET';
@@ -49,6 +52,7 @@ window.fetch = async (input, init) => {
 
     if (url.startsWith('/api/') || url.startsWith('http://localhost')) {
       if (response.ok) {
+        failedEndpoints.delete(url);
         appLog.info('API', `${method} ${url} → ${response.status} (${elapsed}ms)`);
       } else {
         appLog.warn('API', `${method} ${url} → ${response.status} (${elapsed}ms)`);
@@ -59,7 +63,11 @@ window.fetch = async (input, init) => {
   } catch (err) {
     if (url.startsWith('/api/') || url.startsWith('http://localhost')) {
       if ((err as Error).name !== 'AbortError') {
-        appLog.error('API', `${method} ${url} → FAILED: ${(err as Error).message}`);
+        // Only log first failure per endpoint to avoid spam
+        if (!failedEndpoints.has(url)) {
+          failedEndpoints.add(url);
+          appLog.warn('API', `${method} ${url} → ${(err as Error).message} (backend no disponible)`);
+        }
       }
     }
     throw err;

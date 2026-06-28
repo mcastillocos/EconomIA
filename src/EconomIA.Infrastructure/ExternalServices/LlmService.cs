@@ -1,7 +1,9 @@
+using System.Diagnostics;
 using System.Net.Http.Json;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using EconomIA.Application.Interfaces;
+using EconomIA.Infrastructure.Telemetry;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 
@@ -33,18 +35,23 @@ public class LlmService : ILlmService
 
         // Round-robin with failover
         var startIdx = Interlocked.Increment(ref _rotationIndex) % available.Count;
+        var sw = Stopwatch.StartNew();
 
         for (int attempt = 0; attempt < available.Count; attempt++)
         {
             var provider = available[(startIdx + attempt) % available.Count];
             try
             {
+                OpenTelemetryConfig.LlmRequests.Add(1, new KeyValuePair<string, object?>("llm.provider", provider.Name));
                 var result = await provider.CallAsync(_httpClient, systemPrompt, userPrompt, options, ct);
-                _logger.LogInformation("LLM call OK: {Provider} ({Tokens} tokens)", provider.Name, result.TotalTokens);
+                sw.Stop();
+                OpenTelemetryConfig.LlmLatency.Record(sw.Elapsed.TotalMilliseconds, new KeyValuePair<string, object?>("llm.provider", provider.Name));
+                _logger.LogInformation("LLM call OK: {Provider} ({Tokens} tokens, {Elapsed}ms)", provider.Name, result.TotalTokens, sw.ElapsedMilliseconds);
                 return result;
             }
             catch (Exception ex)
             {
+                OpenTelemetryConfig.LlmFailures.Add(1, new KeyValuePair<string, object?>("llm.provider", provider.Name));
                 _logger.LogWarning(ex, "LLM provider {Provider} failed, trying next...", provider.Name);
                 if (attempt == available.Count - 1)
                     throw new InvalidOperationException($"All LLM providers failed. Last error: {ex.Message}", ex);

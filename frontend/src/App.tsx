@@ -6,6 +6,7 @@ import Header from './components/Layout/Header';
 import Sidebar from './components/Layout/Sidebar';
 import type { ViewId } from './components/Layout/Sidebar';
 import { GlobalView, DatosView, GraficasView } from './components/Views/Views';
+import { OverviewView } from './components/Views/OverviewView';
 import { LogsView } from './components/Views/LogsView';
 import { MisFondosView } from './components/Views/MisFondosView';
 import { ConfigView } from './components/Views/ConfigView';
@@ -21,24 +22,40 @@ import { ChatView } from './components/Views/ChatView';
 import { AgentsView } from './components/Views/AgentsView';
 import { appLog } from './store/logStore';
 
+const FUND_VIEWS: ViewId[] = ['global', 'datos', 'graficas', 'misfondos'];
+
 function App() {
   useSignalR();
   const { isDark, toggle } = useTheme();
   const { funds, isStreaming, workersCompleted, workersTotal, startStream } = useStreamFunds();
-  const [activeView, setActiveView] = useState<ViewId>('global');
+  const [activeView, setActiveView] = useState<ViewId>('overview');
+  const [fundsLoaded, setFundsLoaded] = useState(false);
 
-  // Start SSE streaming on mount
   useEffect(() => {
     appLog.info('System', 'EconomIA Dashboard iniciado');
+  }, []);
+
+  // Only load funds when navigating to a fund view
+  useEffect(() => {
+    if (FUND_VIEWS.includes(activeView) && !fundsLoaded && !isStreaming) {
+      startStream();
+      setFundsLoaded(true);
+    }
+  }, [activeView, fundsLoaded, isStreaming, startStream]);
+
+  // Reload handler resets fundsLoaded so a failed reload can be retried
+  const handleReload = useCallback(() => {
+    setFundsLoaded(false);
     startStream();
+    setFundsLoaded(true);
   }, [startStream]);
 
-  const handleChangeView = useCallback((view: ViewId) => {
-    setActiveView(view);
+  const handleChangeView = useCallback((view: ViewId | string) => {
+    setActiveView(view as ViewId);
     appLog.debug('App', `Vista cambiada a: ${view}`);
   }, []);
 
-  const isLoading = funds.length === 0 && isStreaming;
+  const isLoading = FUND_VIEWS.includes(activeView) && funds.length === 0 && isStreaming;
   const progress = workersTotal > 0 ? Math.round((workersCompleted / workersTotal) * 100) : 0;
 
   return (
@@ -46,7 +63,7 @@ function App() {
       <Header isDark={isDark} onToggleTheme={toggle} />
 
       {/* Progress bar during streaming */}
-      {isStreaming && (
+      {isStreaming && FUND_VIEWS.includes(activeView) && (
         <div className="px-6 pt-2 pb-1">
           <div className="flex items-center gap-3 text-xs text-gray-500 dark:text-gray-400">
             <div className="flex-1 h-1.5 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
@@ -66,6 +83,7 @@ function App() {
         <Sidebar activeView={activeView} onChangeView={handleChangeView} />
         <main className="flex-1 overflow-y-auto px-3 py-4 md:px-6 md:py-6 pb-20 md:pb-6">
           <div className="max-w-7xl mx-auto">
+            {activeView === 'overview' && <OverviewView onNavigate={handleChangeView} />}
             {activeView === 'global' && <GlobalView funds={funds} isLoading={isLoading} />}
             {activeView === 'datos' && <DatosView funds={funds} isLoading={isLoading} />}
             {activeView === 'graficas' && <GraficasView funds={funds} />}
@@ -81,7 +99,7 @@ function App() {
             {activeView === 'agents' && <AgentsView />}
             {activeView === 'logs' && <LogsView />}
             {activeView === 'stats' && <StatsView />}
-            {activeView === 'config' && <ConfigView onReload={startStream} />}
+            {activeView === 'config' && <ConfigView onReload={handleReload} />}
 
             {/* Disclaimer visible */}
             <div className="mt-8 border-t border-gray-200 dark:border-gray-700 pt-4">

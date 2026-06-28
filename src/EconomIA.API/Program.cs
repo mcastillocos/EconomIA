@@ -4,6 +4,8 @@ using EconomIA.API.Hubs;
 using EconomIA.API.Middleware;
 using EconomIA.API.BackgroundServices;
 using EconomIA.Application.Interfaces;
+using Microsoft.AspNetCore.Diagnostics.HealthChecks;
+using OpenTelemetry.Metrics;
 using Serilog;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -51,8 +53,8 @@ builder.Services.AddHostedService<MarketDataPollingService>();
 
 // Health checks
 builder.Services.AddHealthChecks()
-    .AddSqlServer(builder.Configuration.GetConnectionString("SqlServer") ?? "")
-    .AddRedis(builder.Configuration.GetConnectionString("Redis") ?? "localhost:6379");
+    .AddSqlServer(builder.Configuration.GetConnectionString("SqlServer") ?? "", name: "sqlserver", tags: ["ready"])
+    .AddRedis(builder.Configuration.GetConnectionString("Redis") ?? "localhost:6379", name: "redis", tags: ["ready"]);
 
 var app = builder.Build();
 
@@ -72,7 +74,20 @@ app.UseRouting();
 app.MapControllers();
 app.MapHub<FundPriceHub>("/hubs/fund-prices");
 app.MapHub<RankingHub>("/hubs/ranking");
-app.MapHealthChecks("/health");
+
+// Health endpoints
+app.MapHealthChecks("/health/live", new HealthCheckOptions
+{
+    Predicate = _ => false // No checks — just confirms app is running
+});
+app.MapHealthChecks("/health/ready", new HealthCheckOptions
+{
+    Predicate = check => check.Tags.Contains("ready")
+});
+app.MapHealthChecks("/health"); // All checks (backward compat)
+
+// Prometheus metrics endpoint
+app.UseOpenTelemetryPrometheusScrapingEndpoint();
 
 app.Run();
 

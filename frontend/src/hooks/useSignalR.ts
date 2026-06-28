@@ -13,6 +13,13 @@ export function useSignalR() {
     if (isConnected.current) return;
 
     try {
+      // Check if backend is reachable before attempting SignalR negotiation
+      const probe = await fetch('/hubs/fund-prices/negotiate?negotiateVersion=1', { method: 'POST' }).catch(() => null);
+      if (!probe || !probe.ok) {
+        appLog.debug('SignalR', 'Backend no disponible — conexión pospuesta');
+        return;
+      }
+
       const priceConn = await signalRService.connectPriceHub();
       const rankingConn = await signalRService.connectRankingHub();
 
@@ -34,7 +41,6 @@ export function useSignalR() {
       isConnected.current = true;
       appLog.success('SignalR', 'Conectado a hubs de precios y ranking');
     } catch (err) {
-      console.error('SignalR connection failed:', err);
       appLog.warn('SignalR', `Conexión fallida: ${(err as Error).message}`);
     }
   }, [updateFundPrice, setRefreshNeeded]);

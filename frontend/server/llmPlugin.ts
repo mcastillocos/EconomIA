@@ -1,6 +1,6 @@
 import type { Plugin } from 'vite';
 import { loadEnv } from 'vite';
-import { readFileSync } from 'fs';
+import { readFileSync, writeFileSync, existsSync } from 'fs';
 import { resolve, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import { TokenBucketLimiter, estimateTokens } from './tokenBucketLimiter';
@@ -151,6 +151,7 @@ interface LLMProvider {
   name: string;
   call: (env: Record<string, string>, sys: string, usr: string, max: number) => Promise<LLMResult>;
   available: (env: Record<string, string>) => boolean;
+  enabled: boolean;
 }
 
 const LLM_PROVIDERS: LLMProvider[] = [
@@ -158,18 +159,94 @@ const LLM_PROVIDERS: LLMProvider[] = [
     name: 'GPT-5.5',
     call: (env, sys, usr, max) => callAzureOpenAI(env, sys, usr, max),
     available: (env) => !!(env.AZURE_OPENAI_API_KEY0 && env.AZURE_OPENAI_ENDPOINT0 && env.AZURE_OPENAI_DEPLOYMENT0),
+    enabled: true,
   },
   {
     name: 'GPT-5.4',
     call: (env, sys, usr, max) => callAzureOpenAI(env, sys, usr, max, 'gpt-5.4'),
     available: (env) => !!(env.AZURE_OPENAI_API_KEY0 && env.AZURE_OPENAI_ENDPOINT0),
+    enabled: true,
   },
   {
     name: 'Claude',
     call: (env, sys, usr, max) => callClaude(env, sys, usr, max),
     available: (env) => !!(env.CLAUDE_API_KEY && env.CLAUDE_ENDPOINT),
+    enabled: true,
   },
 ];
+
+// ── Provider state persistence ─────────────────────────────────────────────
+const PROVIDERS_STATE_FILE = resolve(__dirname, '..', '.llm-providers-state.json');
+
+interface ProviderState {
+  enabled: Record<string, boolean>;
+  deleted: string[];
+  custom: Array<{ name: string; type: 'azure' | 'claude'; endpoint?: string; deployment?: string; model?: string; apiKey?: string }>;
+}
+
+const BUILTIN_NAMES = ['GPT-5.5', 'GPT-5.4', 'Claude'];
+let deletedProviders: string[] = [];
+
+function loadProviderState(): ProviderState {
+  try {
+    if (existsSync(PROVIDERS_STATE_FILE)) {
+      const raw = JSON.parse(readFileSync(PROVIDERS_STATE_FILE, 'utf-8'));
+      return { enabled: raw.enabled ?? {}, deleted: raw.deleted ?? [], custom: raw.custom ?? [] };
+    }
+  } catch { /* ignore parse errors */ }
+  return { enabled: {}, deleted: [], custom: [] };
+}
+
+function saveProviderState() {
+  const state: ProviderState = {
+    enabled: Object.fromEntries(LLM_PROVIDERS.map(p => [p.name, p.enabled])),
+    deleted: deletedProviders,
+    custom: LLM_PROVIDERS
+      .filter(p => !BUILTIN_NAMES.includes(p.name))
+      .map(p => ({ name: p.name, type: 'azure', endpoint: '', deployment: '' })),
+  };
+  writeFileSync(PROVIDERS_STATE_FILE, JSON.stringify(state, null, 2));
+}
+
+function restoreProviderState(env: Record<string, string>) {
+  const state = loadProviderState();
+  deletedProviders = state.deleted;
+
+  // Remove built-in providers that were previously deleted
+  for (const name of state.deleted) {
+    const idx = LLM_PROVIDERS.findIndex(p => p.name === name);
+    if (idx !== -1) {
+      LLM_PROVIDERS.splice(idx, 1);
+    }
+  }
+
+  // Restore enabled flags for remaining built-in providers
+  for (const provider of LLM_PROVIDERS) {
+    if (provider.name in state.enabled) {
+      provider.enabled = state.enabled[provider.name];
+    }
+  }
+  // Restore custom providers
+  for (const custom of state.custom) {
+    if (LLM_PROVIDERS.find(p => p.name === custom.name)) continue;
+    if (state.deleted.includes(custom.name)) continue;
+    const newProvider: LLMProvider = custom.type === 'claude'
+      ? {
+          name: custom.name,
+          call: (_env, sys, usr, max) => callClaude({ ...env, CLAUDE_API_KEY: custom.apiKey || env.CLAUDE_API_KEY, CLAUDE_ENDPOINT: custom.endpoint || env.CLAUDE_ENDPOINT, CLAUDE_MODEL1: custom.model || 'claude-opus-4-7' }, sys, usr, max),
+          available: () => !!(custom.apiKey || env.CLAUDE_API_KEY),
+          enabled: state.enabled[custom.name] ?? true,
+        }
+      : {
+          name: custom.name,
+          call: (_env, sys, usr, max) => callAzureOpenAI({ ...env, AZURE_OPENAI_API_KEY0: custom.apiKey || env.AZURE_OPENAI_API_KEY0, AZURE_OPENAI_ENDPOINT0: custom.endpoint || env.AZURE_OPENAI_ENDPOINT0, AZURE_OPENAI_DEPLOYMENT0: custom.deployment || 'gpt-4o', AZURE_OPENAI_API_VERSION0: env.AZURE_OPENAI_API_VERSION0 || '2024-08-01-preview' }, sys, usr, max, custom.deployment),
+          available: () => !!(custom.apiKey || env.AZURE_OPENAI_API_KEY0),
+          enabled: state.enabled[custom.name] ?? true,
+        };
+    LLM_PROVIDERS.push(newProvider);
+  }
+  console.log(`[LLM] Provider state restored: ${LLM_PROVIDERS.map(p => `${p.name}(${p.enabled ? 'on' : 'off'})`).join(', ')}${state.deleted.length ? ` | deleted: ${state.deleted.join(', ')}` : ''}`);
+}
 
 // Round-robin counter to distribute load across providers
 let providerRotation = 0;
@@ -200,8 +277,8 @@ function resetProviderStats() {
 }
 
 async function callLLMRaw(env: Record<string, string>, systemPrompt: string, userPrompt: string, maxTokens = 4000): Promise<LLMResult> {
-  const available = LLM_PROVIDERS.filter((p) => p.available(env));
-  if (available.length === 0) throw new Error('No LLM API keys configured');
+  const available = LLM_PROVIDERS.filter((p) => p.enabled && p.available(env));
+  if (available.length === 0) throw new Error('No LLM providers available (all disabled or missing keys)');
 
   const startIdx = providerRotation % available.length;
   providerRotation++;
@@ -480,7 +557,7 @@ async function fetchAllFundsParallel(env: Record<string, string>): Promise<unkno
       }
     },
     MAX_CONCURRENT,
-    STAGGER_MS as number,
+    STAGGER_MS,
   );
   const allFunds: unknown[] = [];
   const seenIsins = new Set<string>();
@@ -511,6 +588,7 @@ async function fetchAllFundsParallel(env: Record<string, string>): Promise<unkno
 
 async function streamFundsSSE(env: Record<string, string>, res: any) {
   const cfg = getConfig();
+
   res.writeHead(200, {
     'Content-Type': 'text/event-stream',
     'Cache-Control': 'no-cache',
@@ -594,6 +672,7 @@ export function llmApiPlugin(): Plugin {
     name: 'economia-llm-api',
     configResolved(config) {
       env = loadEnv(config.mode, config.root, '');
+      restoreProviderState(env);
     },
     configureServer(server) {
 
@@ -662,6 +741,7 @@ export function llmApiPlugin(): Plugin {
           const providers = LLM_PROVIDERS.map((p) => ({
             name: p.name,
             available: p.available(env),
+            enabled: p.enabled,
             endpoint: p.name === 'Claude'
               ? (env.CLAUDE_ENDPOINT || '').replace(/\/anthropic.*/, '/...')
               : (env.AZURE_OPENAI_ENDPOINT0 || '').replace(/\/$/, ''),
@@ -716,6 +796,133 @@ export function llmApiPlugin(): Plugin {
 
         res.statusCode = 405;
         res.end(JSON.stringify({ error: 'Method not allowed' }));
+      });
+
+      // ── Providers management endpoint ────────────────────────────────
+      server.middlewares.use('/api/llm/providers', async (req, res) => {
+        res.setHeader('Content-Type', 'application/json');
+
+        if (req.method === 'PATCH') {
+          // Toggle enabled state: { name: string, enabled: boolean }
+          let body = '';
+          req.on('data', (chunk: any) => { body += chunk; });
+          req.on('end', () => {
+            try {
+              const { name, enabled } = JSON.parse(body);
+              const provider = LLM_PROVIDERS.find(p => p.name === name);
+              if (!provider) {
+                res.statusCode = 404;
+                res.end(JSON.stringify({ error: `Provider '${name}' not found` }));
+                return;
+              }
+              provider.enabled = !!enabled;
+              console.log(`[LLM] Provider ${name} ${enabled ? 'enabled' : 'disabled'}`);
+              saveProviderState();
+              res.end(JSON.stringify({ ok: true, name, enabled: provider.enabled }));
+            } catch (err) {
+              res.statusCode = 400;
+              res.end(JSON.stringify({ error: (err as Error).message }));
+            }
+          });
+          return;
+        }
+
+        if (req.method === 'POST') {
+          // Add new provider: { name, type: 'azure'|'claude', endpoint?, deployment?, model?, apiKey? }
+          let body = '';
+          req.on('data', (chunk: any) => { body += chunk; });
+          req.on('end', () => {
+            try {
+              const { name, type, endpoint, deployment, model, apiKey } = JSON.parse(body);
+              if (!name || !type) {
+                res.statusCode = 400;
+                res.end(JSON.stringify({ error: 'name and type are required' }));
+                return;
+              }
+              if (LLM_PROVIDERS.find(p => p.name === name)) {
+                res.statusCode = 409;
+                res.end(JSON.stringify({ error: `Provider '${name}' already exists` }));
+                return;
+              }
+
+              // Store custom env keys for this provider
+              const envPrefix = `CUSTOM_${name.toUpperCase().replace(/[^A-Z0-9]/g, '_')}`;
+              if (apiKey) env[`${envPrefix}_KEY`] = apiKey;
+              if (endpoint) env[`${envPrefix}_ENDPOINT`] = endpoint;
+
+              const newProvider: LLMProvider = type === 'claude'
+                ? {
+                    name,
+                    call: (_env, sys, usr, max) => {
+                      const ep = endpoint || env.CLAUDE_ENDPOINT;
+                      const mdl = model || 'claude-opus-4-7';
+                      const key = apiKey || env.CLAUDE_API_KEY;
+                      if (!key || !ep) throw new Error(`${name} config incompleta`);
+                      // Reuse callClaude logic inline
+                      return callClaude({ ...env, CLAUDE_API_KEY: key, CLAUDE_ENDPOINT: ep, CLAUDE_MODEL1: mdl }, sys, usr, max);
+                    },
+                    available: () => !!(apiKey || env.CLAUDE_API_KEY),
+                    enabled: true,
+                  }
+                : {
+                    name,
+                    call: (_env, sys, usr, max) => {
+                      const ep = endpoint || env.AZURE_OPENAI_ENDPOINT0;
+                      const dep = deployment || 'gpt-4o';
+                      const key = apiKey || env.AZURE_OPENAI_API_KEY0;
+                      const ver = env.AZURE_OPENAI_API_VERSION0 || '2024-08-01-preview';
+                      if (!key || !ep) throw new Error(`${name} config incompleta`);
+                      return callAzureOpenAI({ ...env, AZURE_OPENAI_API_KEY0: key, AZURE_OPENAI_ENDPOINT0: ep, AZURE_OPENAI_DEPLOYMENT0: dep, AZURE_OPENAI_API_VERSION0: ver }, sys, usr, max, dep);
+                    },
+                    available: () => !!(apiKey || env.AZURE_OPENAI_API_KEY0),
+                    enabled: true,
+                  };
+
+              LLM_PROVIDERS.push(newProvider);
+              // Remove from deleted list if re-adding
+              deletedProviders = deletedProviders.filter(n => n !== name);
+              console.log(`[LLM] Provider added: ${name} (${type})`);
+              saveProviderState();
+              res.end(JSON.stringify({ ok: true, name, type }));
+            } catch (err) {
+              res.statusCode = 400;
+              res.end(JSON.stringify({ error: (err as Error).message }));
+            }
+          });
+          return;
+        }
+
+        if (req.method === 'DELETE') {
+          // Remove provider: { name: string }
+          let body = '';
+          req.on('data', (chunk: any) => { body += chunk; });
+          req.on('end', () => {
+            try {
+              const { name } = JSON.parse(body);
+              const idx = LLM_PROVIDERS.findIndex(p => p.name === name);
+              if (idx === -1) {
+                res.statusCode = 404;
+                res.end(JSON.stringify({ error: `Provider '${name}' not found` }));
+                return;
+              }
+              LLM_PROVIDERS.splice(idx, 1);
+              // Track deletion so it persists across restarts
+              if (!deletedProviders.includes(name)) {
+                deletedProviders.push(name);
+              }
+              console.log(`[LLM] Provider removed: ${name}`);
+              saveProviderState();
+              res.end(JSON.stringify({ ok: true, name }));
+            } catch (err) {
+              res.statusCode = 400;
+              res.end(JSON.stringify({ error: (err as Error).message }));
+            }
+          });
+          return;
+        }
+
+        res.statusCode = 405;
+        res.end(JSON.stringify({ error: 'Use PATCH (toggle), POST (add), DELETE (remove)' }));
       });
 
       // ── Reload endpoint (invalida caché y relanza workers) ────────────

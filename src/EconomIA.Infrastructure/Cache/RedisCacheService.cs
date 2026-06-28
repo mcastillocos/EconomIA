@@ -1,5 +1,6 @@
 using System.Text.Json;
 using EconomIA.Domain.Ports;
+using EconomIA.Infrastructure.Telemetry;
 using Microsoft.Extensions.Logging;
 using StackExchange.Redis;
 
@@ -23,10 +24,12 @@ public class RedisCacheService : ICacheService
 
         if (value.IsNullOrEmpty)
         {
+            OpenTelemetryConfig.CacheMisses.Add(1, new KeyValuePair<string, object?>("cache.key", key));
             _logger.LogDebug("Cache MISS for key: {Key}", key);
             return default;
         }
 
+        OpenTelemetryConfig.CacheHits.Add(1, new KeyValuePair<string, object?>("cache.key", key));
         _logger.LogDebug("Cache HIT for key: {Key}", key);
         return JsonSerializer.Deserialize<T>((string)value!);
     }

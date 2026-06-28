@@ -82,9 +82,9 @@ export default function FundTable({ funds, onSelectFund }: Props) {
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
-            {filtered.map((fund) => (
+            {filtered.map((fund, idx) => (
               <tr
-                key={fund.id}
+                key={`${fund.id}-${idx}`}
                 onClick={() => onSelectFund?.(fund)}
                 className="hover:bg-blue-50 dark:hover:bg-primary-900/20 transition-colors cursor-pointer"
               >

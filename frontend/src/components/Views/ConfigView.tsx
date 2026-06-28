@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { RefreshCw, Save, Server, Database, Zap, Clock, Loader2 } from 'lucide-react';
+import { RefreshCw, Save, Server, Database, Zap, Clock, Loader2, Plus, Trash2, Power, PowerOff } from 'lucide-react';
 import { useConfigStore } from '../../store/configStore';
 import clsx from 'clsx';
 
@@ -19,6 +19,7 @@ interface LLMConfig {
 interface Provider {
   name: string;
   available: boolean;
+  enabled: boolean;
   endpoint?: string;
   model?: string;
   deployment?: string;
@@ -59,6 +60,8 @@ export function ConfigView({ onReload }: Props) {
   const [reloading, setReloading] = useState(false);
   const [message, setMessage] = useState<{ text: string; type: 'ok' | 'error' } | null>(null);
   const [selectedProvider, setSelectedProvider] = useState<string | null>(null);
+  const [showAddProvider, setShowAddProvider] = useState(false);
+  const [newProvider, setNewProvider] = useState({ name: '', type: 'azure' as 'azure' | 'claude', endpoint: '', deployment: '', model: '', apiKey: '' });
   const setTotalFunds = useConfigStore((s) => s.setTotalFunds);
 
   const fetchConfig = useCallback(async () => {
@@ -135,6 +138,61 @@ export function ConfigView({ onReload }: Props) {
     setConfig({ ...config, [key]: value });
   };
 
+  const toggleProvider = async (name: string, enabled: boolean) => {
+    try {
+      const res = await fetch('/api/llm/providers', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, enabled }),
+      });
+      if (res.ok) {
+        setProviders(prev => prev.map(p => p.name === name ? { ...p, enabled } : p));
+        setMessage({ text: `${name} ${enabled ? 'activado' : 'desactivado'}`, type: 'ok' });
+      }
+    } catch {
+      setMessage({ text: 'Error al cambiar estado del provider', type: 'error' });
+    }
+  };
+
+  const addProvider = async () => {
+    if (!newProvider.name.trim() || !newProvider.type) return;
+    try {
+      const res = await fetch('/api/llm/providers', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newProvider),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setMessage({ text: `Provider '${newProvider.name}' añadido`, type: 'ok' });
+        setShowAddProvider(false);
+        setNewProvider({ name: '', type: 'azure', endpoint: '', deployment: '', model: '', apiKey: '' });
+        fetchConfig();
+      } else {
+        setMessage({ text: data.error || 'Error al añadir', type: 'error' });
+      }
+    } catch {
+      setMessage({ text: 'Error de red al añadir provider', type: 'error' });
+    }
+  };
+
+  const removeProvider = async (name: string) => {
+    try {
+      const res = await fetch('/api/llm/providers', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name }),
+      });
+      if (res.ok) {
+        setProviders(prev => prev.filter(p => p.name !== name));
+        setSelectedProvider(null);
+        setMessage({ text: `Provider '${name}' eliminado`, type: 'ok' });
+      }
+    } catch {
+      setMessage({ text: 'Error al eliminar provider', type: 'error' });
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -198,20 +256,67 @@ export function ConfigView({ onReload }: Props) {
 
       {/* Providers */}
       <section className="bg-white dark:bg-[#2a2a2a] rounded-xl p-5 border border-gray-200 dark:border-gray-700/50">
-        <h3 className="flex items-center gap-2 text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
-          <Server className="h-4 w-4" /> Proveedores LLM
-        </h3>
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="flex items-center gap-2 text-sm font-semibold text-gray-700 dark:text-gray-300">
+            <Server className="h-4 w-4" /> Proveedores LLM
+          </h3>
+          <button
+            onClick={() => setShowAddProvider(!showAddProvider)}
+            className="flex items-center gap-1 px-2 py-1 text-xs font-medium text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded transition-colors"
+          >
+            <Plus className="h-3.5 w-3.5" /> Añadir
+          </button>
+        </div>
+
+        {/* Add provider form */}
+        {showAddProvider && (
+          <div className="mb-4 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800 space-y-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">Nombre</label>
+                <input type="text" value={newProvider.name} onChange={e => setNewProvider({ ...newProvider, name: e.target.value })} placeholder="GPT-4o-mini" className="w-full px-3 py-1.5 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-sm" />
+              </div>
+              <div>
+                <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">Tipo</label>
+                <select value={newProvider.type} onChange={e => setNewProvider({ ...newProvider, type: e.target.value as 'azure' | 'claude' })} className="w-full px-3 py-1.5 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-sm">
+                  <option value="azure">Azure OpenAI</option>
+                  <option value="claude">Claude</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">Endpoint (opcional)</label>
+                <input type="text" value={newProvider.endpoint} onChange={e => setNewProvider({ ...newProvider, endpoint: e.target.value })} placeholder="https://..." className="w-full px-3 py-1.5 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-sm" />
+              </div>
+              <div>
+                <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">{newProvider.type === 'claude' ? 'Model' : 'Deployment'}</label>
+                <input type="text" value={newProvider.type === 'claude' ? newProvider.model : newProvider.deployment} onChange={e => setNewProvider({ ...newProvider, [newProvider.type === 'claude' ? 'model' : 'deployment']: e.target.value })} placeholder={newProvider.type === 'claude' ? 'claude-opus-4-7' : 'gpt-4o-mini'} className="w-full px-3 py-1.5 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-sm" />
+              </div>
+              <div className="sm:col-span-2">
+                <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">API Key (opcional — usa la del entorno si vacío)</label>
+                <input type="password" value={newProvider.apiKey} onChange={e => setNewProvider({ ...newProvider, apiKey: e.target.value })} placeholder="sk-..." className="w-full px-3 py-1.5 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-sm" />
+              </div>
+            </div>
+            <div className="flex gap-2 justify-end">
+              <button onClick={() => setShowAddProvider(false)} className="px-3 py-1.5 text-xs text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 rounded">Cancelar</button>
+              <button onClick={addProvider} disabled={!newProvider.name.trim()} className="px-3 py-1.5 text-xs font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 rounded">Añadir provider</button>
+            </div>
+          </div>
+        )}
+
         <div className="flex flex-wrap gap-3">
           {providers.map((p) => (
             <button key={p.name} onClick={() => setSelectedProvider(selectedProvider === p.name ? null : p.name)} className={clsx(
               'flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium border cursor-pointer transition-all',
-              p.available
-                ? 'bg-green-50 border-green-200 text-green-700 dark:bg-green-900/20 dark:border-green-800 dark:text-green-400'
-                : 'bg-gray-50 border-gray-200 text-gray-400 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-500',
+              !p.enabled
+                ? 'bg-gray-50 border-gray-200 text-gray-400 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-500 opacity-60'
+                : p.available
+                  ? 'bg-green-50 border-green-200 text-green-700 dark:bg-green-900/20 dark:border-green-800 dark:text-green-400'
+                  : 'bg-amber-50 border-amber-200 text-amber-600 dark:bg-amber-900/20 dark:border-amber-800 dark:text-amber-400',
               selectedProvider === p.name && 'ring-2 ring-blue-500'
             )}>
-              <span className={clsx('h-2 w-2 rounded-full', p.available ? 'bg-green-500' : 'bg-gray-400')} />
+              <span className={clsx('h-2 w-2 rounded-full', !p.enabled ? 'bg-gray-400' : p.available ? 'bg-green-500' : 'bg-amber-500')} />
               {p.name}
+              {!p.enabled && <span className="text-[10px] opacity-60">(off)</span>}
             </button>
           ))}
         </div>
@@ -224,9 +329,23 @@ export function ConfigView({ onReload }: Props) {
             <div className="mt-4 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 space-y-3">
               <div className="flex justify-between items-center">
                 <h4 className="text-sm font-medium text-gray-700 dark:text-gray-200">{p.name}</h4>
-                <span className={clsx('text-xs px-2 py-0.5 rounded-full', p.available ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400')}>
-                  {p.available ? 'Conectado' : 'No disponible'}
-                </span>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => toggleProvider(p.name, !p.enabled)}
+                    className={clsx('flex items-center gap-1 px-2 py-1 rounded text-xs font-medium transition-colors', p.enabled ? 'bg-green-100 text-green-700 hover:bg-green-200 dark:bg-green-900/30 dark:text-green-400' : 'bg-gray-100 text-gray-500 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-400')}
+                    title={p.enabled ? 'Desactivar' : 'Activar'}
+                  >
+                    {p.enabled ? <Power className="h-3 w-3" /> : <PowerOff className="h-3 w-3" />}
+                    {p.enabled ? 'Activo' : 'Inactivo'}
+                  </button>
+                  <button
+                    onClick={() => removeProvider(p.name)}
+                    className="flex items-center gap-1 px-2 py-1 rounded text-xs font-medium text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/20 transition-colors"
+                    title="Eliminar provider"
+                  >
+                    <Trash2 className="h-3 w-3" /> Eliminar
+                  </button>
+                </div>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
                 <div>
@@ -259,15 +378,10 @@ export function ConfigView({ onReload }: Props) {
                 <div>
                   <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">Estado</label>
                   <p className="text-xs text-gray-600 dark:text-gray-400 py-1.5">
-                    {p.available ? '✅ Operativo — key válida detectada' : '❌ Sin API key — configurar en variables de entorno'}
+                    {!p.enabled ? '⏸️ Desactivado manualmente' : p.available ? '✅ Operativo — key válida detectada' : '❌ Sin API key — configurar en variables de entorno'}
                   </p>
                 </div>
               </div>
-              {!p.available && (
-                <p className="text-xs text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 px-3 py-2 rounded">
-                  Para activar este provider, configura las variables de entorno correspondientes en el servidor (AZURE_OPENAI_API_KEY0 / CLAUDE_API_KEY).
-                </p>
-              )}
             </div>
           );
         })()}

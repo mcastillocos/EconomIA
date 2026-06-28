@@ -9,7 +9,7 @@ using Xunit;
 
 namespace EconomIA.Infrastructure.Tests.ExternalServices;
 
-public class Mvp4AgentsTests
+public class DocumentAgentsTests
 {
     private IServiceProvider BuildServiceProvider(
         IReadOnlyList<UploadedDocument>? docs = null,
@@ -70,7 +70,7 @@ public class Mvp4AgentsTests
 
         var result = await agent.ExecuteAsync(llm.Object, "Apple", new(), CancellationToken.None);
 
-        Assert.Contains("No hay transcripciones", result.Output);
+        Assert.Contains("No se encontraron documentos de earnings", result.Output);
     }
 
     [Fact]

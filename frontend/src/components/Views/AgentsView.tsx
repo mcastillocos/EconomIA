@@ -26,13 +26,13 @@ export function AgentsView() {
     { name: 'CompanyAnalysisAgent', status: 'active', description: 'Análisis fundamental de empresas' },
     { name: 'FundAnalysisAgent', status: 'active', description: 'Análisis completo de fondos de inversión' },
     { name: 'DailyNewsAgent', status: 'active', description: 'Briefing diario de noticias relevantes' },
-    { name: 'FinancialDataExtractorAgent', status: 'planned', description: 'Extracción de datos de CSV/Excel/PDF' },
+    { name: 'FinancialDataExtractorAgent', status: 'active', description: 'Extracción de datos de CSV/Excel/PDF' },
     { name: 'AnnualReportReaderAgent', status: 'active', description: 'Lectura de informes anuales con checklist' },
     { name: 'EarningsCallAgent', status: 'active', description: 'Destilación de earnings calls' },
     { name: 'ScreenerAgent', status: 'active', description: 'Screening inteligente con IA' },
     { name: 'PortfolioBriefingAgent', status: 'active', description: 'Resumen de cartera' },
     { name: 'ComparisonAgent', status: 'active', description: 'Comparativa entre fondos/empresas' },
-    { name: 'RiskAgent', status: 'planned', description: 'Evaluación de riesgos' },
+    { name: 'RiskAgent', status: 'active', description: 'Evaluación de riesgos' },
     { name: 'DataValidationAgent', status: 'active', description: 'Validación automática de datos' },
   ];
 

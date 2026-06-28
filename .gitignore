@@ -30,6 +30,7 @@ Thumbs.db
 .env
 .env.*
 !.env.example
+.llm-providers-state.json
 
 # Docker volumes
 **/data/

@@ -1,7 +1,9 @@
+using System.Diagnostics;
 using EconomIA.Application.Interfaces;
 using EconomIA.Domain.Entities;
 using EconomIA.Domain.Ports;
 using EconomIA.Infrastructure.Persistence;
+using EconomIA.Infrastructure.Telemetry;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
@@ -32,6 +34,9 @@ public class AgentService : IAgentService
         dbContext.AgentRuns.Add(run);
         await dbContext.SaveChangesAsync(ct);
 
+        var sw = Stopwatch.StartNew();
+        OpenTelemetryConfig.AgentRuns.Add(1, new KeyValuePair<string, object?>("agent.name", agentName));
+
         try
         {
             if (!_agents.TryGetValue(agentName, out var agent))
@@ -39,10 +44,13 @@ public class AgentService : IAgentService
 
             var result = await agent.ExecuteAsync(_llm, input, context ?? new(), ct);
 
+            sw.Stop();
+            OpenTelemetryConfig.AgentDuration.Record(sw.Elapsed.TotalMilliseconds, new KeyValuePair<string, object?>("agent.name", agentName), new KeyValuePair<string, object?>("agent.status", "completed"));
+
             run.MarkCompleted(result.Output, result.Sources);
             await dbContext.SaveChangesAsync(ct);
 
-            _logger.LogInformation("Agent {Agent} completed successfully", agentName);
+            _logger.LogInformation("Agent {Agent} completed successfully ({Elapsed}ms)", agentName, sw.ElapsedMilliseconds);
 
             return new AgentResult
             {
@@ -55,6 +63,9 @@ public class AgentService : IAgentService
         }
         catch (Exception ex)
         {
+            sw.Stop();
+            OpenTelemetryConfig.AgentDuration.Record(sw.Elapsed.TotalMilliseconds, new KeyValuePair<string, object?>("agent.name", agentName), new KeyValuePair<string, object?>("agent.status", "failed"));
+
             run.MarkFailed(ex.Message);
             await dbContext.SaveChangesAsync(ct);
 

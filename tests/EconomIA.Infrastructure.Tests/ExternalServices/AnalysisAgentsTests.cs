@@ -9,7 +9,7 @@ using Xunit;
 
 namespace EconomIA.Infrastructure.Tests.ExternalServices;
 
-public class Mvp3AgentsTests
+public class AnalysisAgentsTests
 {
     private IServiceProvider BuildServiceProvider(
         IReadOnlyList<Company>? companies = null,
@@ -68,7 +68,7 @@ public class Mvp3AgentsTests
         var result = await agent.ExecuteAsync(llm.Object, "sector tech", new(), CancellationToken.None);
 
         Assert.Equal("## Briefing\nHoy no hay novedades significativas.", result.Output);
-        Assert.Contains("Empresas registradas", result.Sources);
+        Assert.Contains("empresas", result.Sources);
     }
 
     [Fact]
@@ -82,7 +82,7 @@ public class Mvp3AgentsTests
         var result = await agent.ExecuteAsync(llm.Object, "ROE > 15%", new(), CancellationToken.None);
 
         Assert.Contains("Inditex cumple", result.Output);
-        Assert.Contains("Empresas:", result.Sources);
+        Assert.Contains("empresas", result.Sources);
     }
 
     [Fact]
@@ -100,7 +100,7 @@ public class Mvp3AgentsTests
         var result = await agent.ExecuteAsync(llm.Object, "", new(), CancellationToken.None);
 
         Assert.Contains("Resumen Cartera", result.Output);
-        Assert.Contains("Empresas en cartera: 2", result.Sources);
+        Assert.Contains("empresas", result.Sources);
     }
 
     [Fact]

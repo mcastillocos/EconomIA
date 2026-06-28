@@ -1,0 +1,176 @@
+{
+  "annotations": { "list": [] },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "id": null,
+  "links": [],
+  "panels": [
+    {
+      "title": "Request Rate (req/s)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        {
+          "expr": "rate(http_server_request_duration_seconds_count{job=\"economia-api\"}[5m])",
+          "legendFormat": "{{http_request_method}} {{http_route}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": { "unit": "reqps" }
+      }
+    },
+    {
+      "title": "Request Latency P95",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, rate(http_server_request_duration_seconds_bucket{job=\"economia-api\"}[5m]))",
+          "legendFormat": "p95"
+        },
+        {
+          "expr": "histogram_quantile(0.50, rate(http_server_request_duration_seconds_bucket{job=\"economia-api\"}[5m]))",
+          "legendFormat": "p50"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": { "unit": "s" }
+      }
+    },
+    {
+      "title": "LLM Latency",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, rate(economia_economia_llm_latency_bucket[5m]))",
+          "legendFormat": "p95"
+        },
+        {
+          "expr": "histogram_quantile(0.50, rate(economia_economia_llm_latency_bucket[5m]))",
+          "legendFormat": "p50"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": { "unit": "ms" }
+      }
+    },
+    {
+      "title": "LLM Requests & Failures",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 8 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        {
+          "expr": "rate(economia_economia_llm_requests_total[5m])",
+          "legendFormat": "requests ({{llm_provider}})"
+        },
+        {
+          "expr": "rate(economia_economia_llm_failures_total[5m])",
+          "legendFormat": "failures ({{llm_provider}})"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": { "unit": "ops" }
+      }
+    },
+    {
+      "title": "Cache Hit/Miss Ratio",
+      "type": "stat",
+      "gridPos": { "h": 6, "w": 6, "x": 0, "y": 16 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        {
+          "expr": "economia_economia_cache_hits_total / (economia_economia_cache_hits_total + economia_economia_cache_misses_total)",
+          "legendFormat": "Hit Ratio"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": { "unit": "percentunit", "thresholds": { "steps": [{"color": "red", "value": 0}, {"color": "yellow", "value": 0.5}, {"color": "green", "value": 0.8}] } }
+      }
+    },
+    {
+      "title": "Agent Runs",
+      "type": "timeseries",
+      "gridPos": { "h": 6, "w": 9, "x": 6, "y": 16 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        {
+          "expr": "rate(economia_economia_agents_runs_total[5m])",
+          "legendFormat": "{{agent_name}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": { "unit": "ops" }
+      }
+    },
+    {
+      "title": "Agent Duration P95",
+      "type": "stat",
+      "gridPos": { "h": 6, "w": 9, "x": 15, "y": 16 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, rate(economia_economia_agents_duration_bucket[5m]))",
+          "legendFormat": "p95"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": { "unit": "ms" }
+      }
+    },
+    {
+      "title": "Funds Updated/sec",
+      "type": "stat",
+      "gridPos": { "h": 6, "w": 6, "x": 0, "y": 22 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        {
+          "expr": "rate(economia_economia_funds_updated_total[5m])",
+          "legendFormat": "funds/s"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": { "unit": "ops" }
+      }
+    },
+    {
+      "title": "GC Collections",
+      "type": "timeseries",
+      "gridPos": { "h": 6, "w": 9, "x": 6, "y": 22 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        {
+          "expr": "rate(process_runtime_dotnet_gc_collections_count_total{job=\"economia-api\"}[5m])",
+          "legendFormat": "Gen {{generation}}"
+        }
+      ]
+    },
+    {
+      "title": "Process Memory (MB)",
+      "type": "timeseries",
+      "gridPos": { "h": 6, "w": 9, "x": 15, "y": 22 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        {
+          "expr": "process_runtime_dotnet_gc_heap_size_bytes{job=\"economia-api\"} / 1024 / 1024",
+          "legendFormat": "Heap Size"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": { "unit": "decmbytes" }
+      }
+    }
+  ],
+  "schemaVersion": 39,
+  "tags": ["economia", "overview"],
+  "templating": { "list": [] },
+  "time": { "from": "now-1h", "to": "now" },
+  "title": "EconomIA - Overview",
+  "uid": "economia-overview",
+  "version": 1
+}

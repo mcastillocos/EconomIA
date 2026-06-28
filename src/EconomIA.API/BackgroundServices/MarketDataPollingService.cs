@@ -1,4 +1,5 @@
 using EconomIA.Application.Commands.RefreshMarketData;
+using EconomIA.Infrastructure.Telemetry;
 using MediatR;
 
 namespace EconomIA.API.BackgroundServices;
@@ -31,6 +32,7 @@ public class MarketDataPollingService : BackgroundService
 
                 _logger.LogInformation("Refreshing market data...");
                 var count = await mediator.Send(new RefreshMarketDataCommand(100), stoppingToken);
+                OpenTelemetryConfig.FundsUpdated.Add(count);
                 _logger.LogInformation("Market data refreshed. {Count} funds updated", count);
             }
             catch (Exception ex)
