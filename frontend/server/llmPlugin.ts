@@ -331,7 +331,6 @@ interface FundCache {
 }
 
 let fundCache: FundCache | null = null;
-const CACHE_TTL = 10 * 60 * 1000; // 10 minutes
 
 // ── Runtime Config (mutable from /api/llm/config) ──────────────────────────
 

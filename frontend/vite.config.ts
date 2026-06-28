@@ -16,6 +16,30 @@ export default defineConfig({
         target: 'http://localhost:5000',
         changeOrigin: true,
       },
+      '/api/companies': {
+        target: 'http://localhost:5000',
+        changeOrigin: true,
+      },
+      '/api/watchlists': {
+        target: 'http://localhost:5000',
+        changeOrigin: true,
+      },
+      '/api/documents': {
+        target: 'http://localhost:5000',
+        changeOrigin: true,
+      },
+      '/api/metrics': {
+        target: 'http://localhost:5000',
+        changeOrigin: true,
+      },
+      '/api/chat': {
+        target: 'http://localhost:5000',
+        changeOrigin: true,
+      },
+      '/api/reports': {
+        target: 'http://localhost:5000',
+        changeOrigin: true,
+      },
       '/hubs': {
         target: 'http://localhost:5000',
         changeOrigin: true,

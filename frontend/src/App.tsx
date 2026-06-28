@@ -10,6 +10,15 @@ import { LogsView } from './components/Views/LogsView';
 import { MisFondosView } from './components/Views/MisFondosView';
 import { ConfigView } from './components/Views/ConfigView';
 import { StatsView } from './components/Views/StatsView';
+import { CompaniesView } from './components/Views/CompaniesView';
+import { WatchlistsView } from './components/Views/WatchlistsView';
+import { UploadsView } from './components/Views/UploadsView';
+import { MetricsView } from './components/Views/MetricsView';
+import { ReportsView } from './components/Views/ReportsView';
+import { BriefingView } from './components/Views/BriefingView';
+import { ScreenerView } from './components/Views/ScreenerView';
+import { ChatView } from './components/Views/ChatView';
+import { AgentsView } from './components/Views/AgentsView';
 import { appLog } from './store/logStore';
 
 function App() {
@@ -61,9 +70,25 @@ function App() {
             {activeView === 'datos' && <DatosView funds={funds} isLoading={isLoading} />}
             {activeView === 'graficas' && <GraficasView funds={funds} />}
             {activeView === 'misfondos' && <MisFondosView topFunds={funds} />}
+            {activeView === 'companies' && <CompaniesView />}
+            {activeView === 'watchlists' && <WatchlistsView />}
+            {activeView === 'uploads' && <UploadsView />}
+            {activeView === 'metrics' && <MetricsView />}
+            {activeView === 'reports' && <ReportsView />}
+            {activeView === 'briefing' && <BriefingView />}
+            {activeView === 'screener' && <ScreenerView />}
+            {activeView === 'chat' && <ChatView />}
+            {activeView === 'agents' && <AgentsView />}
             {activeView === 'logs' && <LogsView />}
             {activeView === 'stats' && <StatsView />}
             {activeView === 'config' && <ConfigView onReload={startStream} />}
+
+            {/* Disclaimer visible */}
+            <div className="mt-8 border-t border-gray-200 dark:border-gray-700 pt-4">
+              <p className="text-[10px] text-gray-400 dark:text-gray-500 text-center">
+                economIA es una herramienta de apoyo al análisis financiero. No constituye recomendación de inversión. Las decisiones finales son responsabilidad del usuario.
+              </p>
+            </div>
           </div>
         </main>
       </div>

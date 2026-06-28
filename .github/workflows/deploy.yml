@@ -1,0 +1,56 @@
+name: Deploy to Azure VM
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Copy files to Azure VM
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.AZURE_HOST }}
+          username: ${{ secrets.AZURE_USER }}
+          key: ${{ secrets.AZURE_SSH_KEY }}
+          source: "src/,frontend/,docker/,sql/,scripts/,observability/"
+          target: /home/${{ secrets.AZURE_USER }}/economia
+
+      - name: Execute SQL migrations
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.AZURE_HOST }}
+          username: ${{ secrets.AZURE_USER }}
+          key: ${{ secrets.AZURE_SSH_KEY }}
+          script: |
+            cd /home/${{ secrets.AZURE_USER }}/economia
+            # Ejecutar scripts SQL pendientes dentro del contenedor
+            for f in sql/*.sql; do
+              BASENAME=$(basename "$f" .sql)
+              DONE_FLAG="/home/${{ secrets.AZURE_USER }}/economia/.scripts_state/${BASENAME}.done"
+              if [ ! -f "$DONE_FLAG" ]; then
+                echo "Ejecutando $f..."
+                docker exec -i economia-sqlserver /opt/mssql-tools18/bin/sqlcmd \
+                  -S localhost -U sa -P '${{ secrets.SQL_PASSWORD }}' -C -i /dev/stdin < "$f" && \
+                mkdir -p .scripts_state && touch "$DONE_FLAG"
+              fi
+            done
+
+      - name: Build and deploy containers
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.AZURE_HOST }}
+          username: ${{ secrets.AZURE_USER }}
+          key: ${{ secrets.AZURE_SSH_KEY }}
+          script: |
+            cd /home/${{ secrets.AZURE_USER }}/economia
+            docker compose -f docker/docker-compose.azure.yml --profile db --profile core --profile kafka build --no-cache
+            docker compose -f docker/docker-compose.azure.yml --profile db --profile core --profile kafka up -d
+            docker image prune -f
+            echo "Deploy completado: $(date)"
