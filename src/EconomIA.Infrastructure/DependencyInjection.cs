@@ -89,7 +89,7 @@ public static class DependencyInjection
                 options.Retry.Delay = TimeSpan.FromSeconds(1);
                 options.AttemptTimeout.Timeout = TimeSpan.FromSeconds(60);
                 options.TotalRequestTimeout.Timeout = TimeSpan.FromSeconds(120);
-                options.CircuitBreaker.SamplingDuration = TimeSpan.FromSeconds(60);
+                options.CircuitBreaker.SamplingDuration = TimeSpan.FromSeconds(120);
             });
 
         // Agents

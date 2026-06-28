@@ -79,7 +79,8 @@ jobs:
             docker compose -f docker/docker-compose.azure.yml --env-file docker/.env --profile db --profile kafka up -d --wait
 
             # Levantar core (api, frontend, llm) con force-recreate para usar imágenes nuevas
-            docker compose -f docker/docker-compose.azure.yml --env-file docker/.env --profile core up -d --force-recreate --wait
+            # Necesita --profile db --profile kafka porque economia-api tiene depends_on: kafka
+            docker compose -f docker/docker-compose.azure.yml --env-file docker/.env --profile db --profile core --profile kafka up -d --force-recreate --wait
 
             docker image prune -f
             echo "Deploy completado: $(date)"
