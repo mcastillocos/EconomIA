@@ -66,21 +66,28 @@ public class LlmService : ILlmService
         var providers = new List<LlmProvider>();
         var section = _config.GetSection("LLM");
 
+        string? Resolve(string sectionKey, string? envKey = null)
+        {
+            var val = section[sectionKey];
+            if (!string.IsNullOrWhiteSpace(val)) return val;
+            return envKey is not null ? _config[envKey] : null;
+        }
+
         // Azure OpenAI
-        var azureKey = section["AzureOpenAI:ApiKey"] ?? _config["AZURE_OPENAI_API_KEY0"];
-        var azureEndpoint = section["AzureOpenAI:Endpoint"] ?? _config["AZURE_OPENAI_ENDPOINT0"];
-        var azureDeployment = section["AzureOpenAI:Deployment"] ?? _config["AZURE_OPENAI_DEPLOYMENT0"];
-        var azureVersion = section["AzureOpenAI:ApiVersion"] ?? _config["AZURE_OPENAI_API_VERSION0"] ?? "2024-08-01-preview";
+        var azureKey = Resolve("AzureOpenAI:ApiKey", "AZURE_OPENAI_API_KEY0");
+        var azureEndpoint = Resolve("AzureOpenAI:Endpoint", "AZURE_OPENAI_ENDPOINT0");
+        var azureDeployment = Resolve("AzureOpenAI:Deployment", "AZURE_OPENAI_DEPLOYMENT0") ?? "gpt-5.5";
+        var azureVersion = Resolve("AzureOpenAI:ApiVersion", "AZURE_OPENAI_API_VERSION0") ?? "2024-08-01-preview";
 
         if (!string.IsNullOrWhiteSpace(azureKey) && !string.IsNullOrWhiteSpace(azureEndpoint))
         {
-            providers.Add(new AzureOpenAIProvider(azureKey, azureEndpoint.TrimEnd('/'), azureDeployment ?? "gpt-5.5", azureVersion));
+            providers.Add(new AzureOpenAIProvider(azureKey, azureEndpoint.TrimEnd('/'), azureDeployment, azureVersion));
         }
 
         // Claude
-        var claudeKey = section["Claude:ApiKey"] ?? _config["CLAUDE_API_KEY"];
-        var claudeEndpoint = section["Claude:Endpoint"] ?? _config["CLAUDE_ENDPOINT"] ?? "https://api.anthropic.com/v1/messages";
-        var claudeModel = section["Claude:Model"] ?? _config["CLAUDE_MODEL1"] ?? "claude-opus-4-7";
+        var claudeKey = Resolve("Claude:ApiKey", "CLAUDE_API_KEY");
+        var claudeEndpoint = Resolve("Claude:Endpoint", "CLAUDE_ENDPOINT") ?? "https://api.anthropic.com/v1/messages";
+        var claudeModel = Resolve("Claude:Model", "CLAUDE_MODEL1") ?? "claude-opus-4-7";
 
         if (!string.IsNullOrWhiteSpace(claudeKey))
         {
@@ -127,15 +134,18 @@ public class LlmService : ILlmService
                     new { role = "system", content = system },
                     new { role = "user", content = user }
                 },
-                max_completion_tokens = opts.MaxTokens,
-                temperature = opts.Temperature
+                max_completion_tokens = opts.MaxTokens
             });
 
             using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
             cts.CancelAfter(TimeSpan.FromSeconds(90));
 
             var resp = await http.SendAsync(request, cts.Token);
-            resp.EnsureSuccessStatusCode();
+            if (!resp.IsSuccessStatusCode)
+            {
+                var errorBody = await resp.Content.ReadAsStringAsync(cts.Token);
+                throw new HttpRequestException($"Azure OpenAI {(int)resp.StatusCode}: {errorBody}");
+            }
 
             var json = await resp.Content.ReadFromJsonAsync<JsonElement>(cts.Token);
             var content = json.GetProperty("choices")[0].GetProperty("message").GetProperty("content").GetString() ?? "";

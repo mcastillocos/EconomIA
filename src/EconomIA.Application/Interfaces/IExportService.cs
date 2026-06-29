@@ -8,4 +8,5 @@ public interface IExportService
     Task<ExportResult> ExportPortfolioAsync(string format, string watchlistId);
     Task<ExportResult> ExportEarningsCallAsync(string format, string callId);
     Task<ExportResult> ExportReportAsync(string format, string reportId);
+    ExportResult ExportBriefing(string format, string title, string content, string? sources = null);
 }

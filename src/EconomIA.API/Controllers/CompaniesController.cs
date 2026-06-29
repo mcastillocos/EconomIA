@@ -1,4 +1,6 @@
+using System.Text.Json;
 using EconomIA.Application.DTOs;
+using EconomIA.Application.Interfaces;
 using EconomIA.Domain.Entities;
 using EconomIA.Domain.Ports;
 using Microsoft.AspNetCore.Mvc;
@@ -10,10 +12,12 @@ namespace EconomIA.API.Controllers;
 public class CompaniesController : ControllerBase
 {
     private readonly ICompanyRepository _repository;
+    private readonly IServiceProvider _sp;
 
-    public CompaniesController(ICompanyRepository repository)
+    public CompaniesController(ICompanyRepository repository, IServiceProvider sp)
     {
         _repository = repository;
+        _sp = sp;
     }
 
     [HttpGet]
@@ -106,4 +110,83 @@ public class CompaniesController : ControllerBase
         c.Sector, c.Industry, c.Currency, c.Competitors,
         c.RelevantUrls, c.PreferredSource, c.Notes,
         c.CreatedAt, c.UpdatedAt);
+
+    /// <summary>
+    /// Busca datos de una empresa por nombre/ticker usando IA.
+    /// Devuelve un CreateCompanyRequest prellenado SIN guardar.
+    /// </summary>
+    [HttpPost("ai-lookup")]
+    [ProducesResponseType(typeof(CreateCompanyRequest), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status503ServiceUnavailable)]
+    public async Task<IActionResult> AiLookup([FromBody] AiLookupRequest request, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(request.Query))
+            return BadRequest(new { error = "Se requiere un nombre o ticker de empresa." });
+
+        ILlmService llm;
+        try
+        {
+            llm = _sp.GetRequiredService<ILlmService>();
+        }
+        catch
+        {
+            return StatusCode(503, new { error = "Servicio de IA no disponible. Configure las API keys en appsettings." });
+        }
+
+        var systemPrompt = """
+            Eres un experto en mercados financieros. Dado un nombre o ticker de empresa,
+            devuelve SOLO un JSON con estos campos (sin texto adicional, sin markdown):
+            {
+              "name": "Nombre completo de la empresa",
+              "ticker": "Ticker principal (ej: AAPL)",
+              "isin": "Código ISIN si lo conoces, o null",
+              "market": "Mercado principal (ej: NASDAQ, NYSE, BME, LSE, XETRA)",
+              "country": "País de sede (ej: Estados Unidos, España)",
+              "sector": "Sector (ej: Tecnología, Energía, Salud)",
+              "industry": "Industria específica (ej: Semiconductores, Software)",
+              "currency": "Divisa principal (ej: USD, EUR, GBP)",
+              "competitors": "Principales competidores separados por comas",
+              "relevantUrls": "Web oficial y fuentes financieras relevantes separadas por comas",
+              "preferredSource": "Mejor fuente de datos financieros para esta empresa",
+              "notes": "Breve descripción de la empresa y datos clave (capitalización, empleados, año fundación)"
+            }
+            Si no conoces un campo con certeza, usa null. No inventes datos.
+            """;
+
+        try
+        {
+            var response = await llm.ChatAsync(systemPrompt, $"Busca información de: {request.Query}", new LlmOptions { MaxTokens = 1000 }, ct);
+
+            var content = response.Content.Trim();
+            // Limpiar posible markdown fence
+            if (content.StartsWith("```"))
+            {
+                var firstNewline = content.IndexOf('\n');
+                var lastFence = content.LastIndexOf("```");
+                if (firstNewline > 0 && lastFence > firstNewline)
+                    content = content[(firstNewline + 1)..lastFence].Trim();
+            }
+
+            var result = JsonSerializer.Deserialize<CreateCompanyRequest>(content, new JsonSerializerOptions
+            {
+                PropertyNameCaseInsensitive = true
+            });
+
+            if (result is null || string.IsNullOrWhiteSpace(result.Name))
+                return BadRequest(new { error = "La IA no pudo identificar la empresa.", raw = content });
+
+            return Ok(result);
+        }
+        catch (InvalidOperationException ex) when (ex.Message.Contains("LLM providers"))
+        {
+            return StatusCode(503, new { error = "No hay proveedores LLM configurados. Configure las API keys de Azure OpenAI o Claude.", detail = ex.Message });
+        }
+        catch (JsonException)
+        {
+            return BadRequest(new { error = "La IA devolvió un formato inesperado. Intente de nuevo." });
+        }
+    }
 }
+
+public record AiLookupRequest(string Query);

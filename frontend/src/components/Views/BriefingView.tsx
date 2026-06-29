@@ -1,15 +1,18 @@
 import { useState } from 'react';
 import axios from 'axios';
+import { Download } from 'lucide-react';
 
 export function BriefingView() {
   const [briefing, setBriefing] = useState<string | null>(null);
   const [sources, setSources] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [topic, setTopic] = useState('');
+  const [agentLabel, setAgentLabel] = useState('');
 
-  const generateBriefing = async (agentName: string) => {
+  const generateBriefing = async (agentName: string, label: string) => {
     setLoading(true);
     setBriefing(null);
+    setAgentLabel(label);
     try {
       const res = await axios.post('/api/chat/agent', {
         agentName,
@@ -21,6 +24,30 @@ export function BriefingView() {
       setBriefing(`⚠️ Error: ${err instanceof Error ? err.message : 'No se pudo generar el briefing'}`);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleExportBriefing = async (format: 'pdf' | 'md') => {
+    if (!briefing) return;
+    try {
+      const res = await fetch(`/api/export/briefing?format=${format}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title: agentLabel || 'Resumen Diario', content: briefing, sources })
+      });
+      if (!res.ok) throw new Error('Error en exportación');
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      const disposition = res.headers.get('content-disposition');
+      a.download = disposition?.match(/filename="?([^"]+)"?/)?.[1] ?? `briefing.${format}`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      console.error('Export error:', e);
     }
   };
 
@@ -42,14 +69,14 @@ export function BriefingView() {
         </div>
         <div className="flex gap-2 flex-wrap">
           <button
-            onClick={() => generateBriefing('DailyNewsAgent')}
+            onClick={() => generateBriefing('DailyNewsAgent', 'Briefing Diario')}
             disabled={loading}
             className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors text-sm"
           >
             {loading ? 'Generando...' : '📰 Briefing Diario'}
           </button>
           <button
-            onClick={() => generateBriefing('PortfolioBriefingAgent')}
+            onClick={() => generateBriefing('PortfolioBriefingAgent', 'Resumen Cartera')}
             disabled={loading}
             className="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:opacity-50 transition-colors text-sm"
           >
@@ -61,6 +88,23 @@ export function BriefingView() {
       {/* Result */}
       {briefing && (
         <div className="bg-white dark:bg-[#2a2a2a] rounded-xl border border-gray-200 dark:border-gray-700 p-5">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-sm font-semibold text-gray-600 dark:text-gray-400">{agentLabel}</h3>
+            <div className="flex gap-1">
+              <button
+                onClick={() => handleExportBriefing('pdf')}
+                className="flex items-center gap-1 px-2 py-1 text-xs bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-400 transition-colors"
+              >
+                <Download className="h-3 w-3" /> PDF
+              </button>
+              <button
+                onClick={() => handleExportBriefing('md')}
+                className="flex items-center gap-1 px-2 py-1 text-xs bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-400 transition-colors"
+              >
+                <Download className="h-3 w-3" /> MD
+              </button>
+            </div>
+          </div>
           <div className="prose prose-sm dark:prose-invert max-w-none whitespace-pre-wrap text-sm text-gray-700 dark:text-gray-300">
             {briefing}
           </div>

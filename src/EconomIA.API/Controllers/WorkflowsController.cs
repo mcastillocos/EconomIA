@@ -7,11 +7,11 @@ namespace EconomIA.API.Controllers;
 [Route("api/[controller]")]
 public class WorkflowsController : ControllerBase
 {
-    private readonly WorkflowEngine _engine;
+    private readonly IServiceProvider _sp;
 
-    public WorkflowsController(WorkflowEngine engine)
+    public WorkflowsController(IServiceProvider sp)
     {
-        _engine = engine;
+        _sp = sp;
     }
 
     /// <summary>
@@ -49,7 +49,8 @@ public class WorkflowsController : ControllerBase
         if (workflow is null)
             return NotFound($"Workflow '{workflowName}' no encontrado. Disponibles: {string.Join(", ", PredefinedWorkflows.All.Select(w => w.Name))}");
 
-        var result = await _engine.ExecuteAsync(workflow, request.Input, ct);
+        var engine = _sp.GetRequiredService<WorkflowEngine>();
+        var result = await engine.ExecuteAsync(workflow, request.Input, ct);
         return Ok(result);
     }
 }

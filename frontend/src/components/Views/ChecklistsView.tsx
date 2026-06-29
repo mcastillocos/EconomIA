@@ -55,7 +55,7 @@ export default function ChecklistsView() {
   const [selectedInstance, setSelectedInstance] = useState<string | null>(null);
   const [newEntity, setNewEntity] = useState({ name: '', type: 'company' });
 
-  const { data: templates = [] } = useQuery<Template[]>({
+  const { data: templates = [], isLoading: loadingTemplates, isError: errorTemplates } = useQuery<Template[]>({
     queryKey: ['checklist-templates'],
     queryFn: async () => (await axios.get('/api/checklists/templates')).data,
   });
@@ -148,11 +148,18 @@ export default function ChecklistsView() {
         )}
       </div>
 
+      {errorTemplates && (
+        <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-3 text-sm text-red-700 dark:text-red-300">
+          Error cargando checklists. Verifica que el backend esté activo.
+        </div>
+      )}
+
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         {/* Panel izquierdo: Templates + Instancias */}
         <div className="space-y-4">
           <div>
             <h3 className="text-sm font-semibold text-gray-500 dark:text-gray-400 mb-2">Templates</h3>
+            {loadingTemplates && <p className="text-xs text-gray-400">Cargando...</p>}
             <div className="space-y-1">
               {templates.map(t => (
                 <button

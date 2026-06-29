@@ -1,3 +1,5 @@
+using System.Text;
+using System.Text.RegularExpressions;
 using ClosedXML.Excel;
 using QuestPDF.Fluent;
 using QuestPDF.Helpers;
@@ -13,11 +15,143 @@ namespace EconomIA.Infrastructure.ExternalServices;
 public class ExportService : IExportService
 {
     private readonly EconomIADbContext _db;
+    private static readonly string BrandColor = Colors.Blue.Darken2;
 
     public ExportService(EconomIADbContext db)
     {
         _db = db;
         QuestPDF.Settings.License = LicenseType.Community;
+    }
+
+    // ── Markdown → QuestPDF rendering ──────────────────────────────────
+
+    private static void RenderMarkdownToPdf(ColumnDescriptor col, string markdown)
+    {
+        if (string.IsNullOrWhiteSpace(markdown))
+        {
+            col.Item().Text("Sin contenido").FontSize(10).Italic();
+            return;
+        }
+
+        var lines = markdown.Split('\n');
+        foreach (var rawLine in lines)
+        {
+            var line = rawLine.TrimEnd('\r');
+
+            // Blank line → spacing
+            if (string.IsNullOrWhiteSpace(line))
+            {
+                col.Item().PaddingBottom(4);
+                continue;
+            }
+
+            // Headers
+            if (line.StartsWith("### "))
+            {
+                col.Item().PaddingTop(6).PaddingBottom(2)
+                    .Text(StripInlineMarkdown(line[4..])).FontSize(11).Bold().FontColor(Colors.Grey.Darken3);
+                continue;
+            }
+            if (line.StartsWith("## "))
+            {
+                col.Item().PaddingTop(8).PaddingBottom(3)
+                    .Text(StripInlineMarkdown(line[3..])).FontSize(13).Bold().FontColor(BrandColor);
+                continue;
+            }
+            if (line.StartsWith("# "))
+            {
+                col.Item().PaddingTop(10).PaddingBottom(4)
+                    .Text(StripInlineMarkdown(line[2..])).FontSize(15).Bold().FontColor(BrandColor);
+                continue;
+            }
+
+            // Horizontal rule
+            if (Regex.IsMatch(line.Trim(), @"^[-*_]{3,}$"))
+            {
+                col.Item().PaddingVertical(4).LineHorizontal(0.5f).LineColor(Colors.Grey.Lighten2);
+                continue;
+            }
+
+            // Bullet list
+            if (line.TrimStart().StartsWith("- ") || line.TrimStart().StartsWith("* "))
+            {
+                var indent = line.Length - line.TrimStart().Length;
+                var text = StripInlineMarkdown(line.TrimStart()[2..]);
+                col.Item().PaddingLeft(10 + indent * 8).Row(row =>
+                {
+                    row.ConstantItem(10).AlignMiddle().Text("•").FontSize(9).Bold().FontColor(BrandColor);
+                    row.RelativeItem().Text(text).FontSize(10);
+                });
+                continue;
+            }
+
+            // Numbered list
+            var numberedMatch = Regex.Match(line.TrimStart(), @"^(\d+)\.\s+(.+)$");
+            if (numberedMatch.Success)
+            {
+                var num = numberedMatch.Groups[1].Value;
+                var text = StripInlineMarkdown(numberedMatch.Groups[2].Value);
+                col.Item().PaddingLeft(10).Row(row =>
+                {
+                    row.ConstantItem(18).AlignMiddle().Text($"{num}.").FontSize(10).Bold().FontColor(BrandColor);
+                    row.RelativeItem().Text(text).FontSize(10);
+                });
+                continue;
+            }
+
+            // Regular paragraph — render inline bold/italic
+            col.Item().Text(t =>
+            {
+                t.DefaultTextStyle(x => x.FontSize(10));
+                RenderInlineMarkdown(t, line);
+            });
+        }
+    }
+
+    private static void RenderInlineMarkdown(TextDescriptor text, string line)
+    {
+        // Split on **bold** and *italic* patterns
+        var parts = Regex.Split(line, @"(\*\*[^*]+\*\*|\*[^*]+\*)");
+        foreach (var part in parts)
+        {
+            if (part.StartsWith("**") && part.EndsWith("**"))
+                text.Span(part[2..^2]).Bold();
+            else if (part.StartsWith("*") && part.EndsWith("*"))
+                text.Span(part[1..^1]).Italic();
+            else
+                text.Span(part);
+        }
+    }
+
+    private static string StripInlineMarkdown(string text)
+    {
+        text = Regex.Replace(text, @"\*\*([^*]+)\*\*", "$1");
+        text = Regex.Replace(text, @"\*([^*]+)\*", "$1");
+        text = Regex.Replace(text, @"`([^`]+)`", "$1");
+        return text.Trim();
+    }
+
+    private static void AddPdfHeader(PageDescriptor page, string title)
+    {
+        page.Header().BorderBottom(1).BorderColor(BrandColor).PaddingBottom(5).Row(row =>
+        {
+            row.RelativeItem().Text(title).FontSize(16).Bold().FontColor(BrandColor);
+            row.ConstantItem(120).AlignRight().AlignBottom()
+                .Text(DateTime.Now.ToString("dd/MM/yyyy")).FontSize(9).FontColor(Colors.Grey.Medium);
+        });
+    }
+
+    private static void AddPdfFooter(PageDescriptor page)
+    {
+        page.Footer().BorderTop(0.5f).BorderColor(Colors.Grey.Lighten2).PaddingTop(4).Row(row =>
+        {
+            row.RelativeItem().Text("economIA · Herramienta de apoyo al análisis financiero").FontSize(7).FontColor(Colors.Grey.Medium);
+            row.ConstantItem(80).AlignRight().Text(t =>
+            {
+                t.Span("Pág. ").FontSize(7).FontColor(Colors.Grey.Medium);
+                t.CurrentPageNumber().FontSize(7).FontColor(Colors.Grey.Medium);
+            });
+        });
     }
 
     public async Task<ExportResult> ExportFundsAsync(string format, Dictionary<string, string>? filters = null)
@@ -28,6 +162,22 @@ public class ExportService : IExportService
             .OrderBy(f => f.RankingPosition)
             .Take(100)
             .ToListAsync();
+
+        if (format == "md")
+        {
+            var sb = new StringBuilder();
+            sb.AppendLine("# economIA — Ranking de Fondos");
+            sb.AppendLine($"*Generado: {DateTime.Now:dd/MM/yyyy HH:mm}*\n");
+            sb.AppendLine("| # | Nombre | ISIN | Categoría | Rent. 1A | Rating | TER |");
+            sb.AppendLine("|---|--------|------|-----------|----------|--------|-----|");
+            for (int i = 0; i < funds.Count; i++)
+            {
+                var f = funds[i];
+                var perf = f.Performances.OrderByDescending(p => p.RecordedAt).FirstOrDefault();
+                sb.AppendLine($"| {i + 1} | {f.Name} | {f.Isin} | {f.Category} | {perf?.Return1Year.Value ?? 0:F2}% | {(int)f.Rating}★ | {f.ExpenseRatio.Value:F2}% |");
+            }
+            return new ExportResult(Encoding.UTF8.GetBytes(sb.ToString()), "text/markdown", $"fondos_{DateTime.Now:yyyyMMdd}.md");
+        }
 
         if (format == "excel")
         {
@@ -70,11 +220,12 @@ public class ExportService : IExportService
             {
                 page.Size(PageSizes.A4.Landscape());
                 page.Margin(30);
-                page.Header().Text("economIA — Ranking de Fondos").FontSize(18).Bold().FontColor(Colors.Blue.Darken2);
+                AddPdfHeader(page, "Ranking de Fondos");
                 page.Content().PaddingVertical(10).Table(table =>
                 {
                     table.ColumnsDefinition(c =>
                     {
+                        c.ConstantColumn(25);
                         c.RelativeColumn(3);
                         c.RelativeColumn(2);
                         c.RelativeColumn(2);
@@ -85,31 +236,34 @@ public class ExportService : IExportService
 
                     table.Header(header =>
                     {
-                        header.Cell().Text("Nombre").Bold();
-                        header.Cell().Text("ISIN").Bold();
-                        header.Cell().Text("Categoría").Bold();
-                        header.Cell().Text("Rent. 1A").Bold();
-                        header.Cell().Text("Rating").Bold();
-                        header.Cell().Text("TER").Bold();
+                        void HeaderCell(IContainer c, string text) =>
+                            c.Background(BrandColor).Padding(4).Text(text).FontSize(9).Bold().FontColor(Colors.White);
+                        HeaderCell(header.Cell(), "#");
+                        HeaderCell(header.Cell(), "Nombre");
+                        HeaderCell(header.Cell(), "ISIN");
+                        HeaderCell(header.Cell(), "Categoría");
+                        HeaderCell(header.Cell(), "Rent. 1A");
+                        HeaderCell(header.Cell(), "Rating");
+                        HeaderCell(header.Cell(), "TER");
                     });
 
-                    foreach (var f in funds)
+                    for (int i = 0; i < funds.Count; i++)
                     {
+                        var f = funds[i];
                         var perf = f.Performances.OrderByDescending(p => p.RecordedAt).FirstOrDefault();
-                        table.Cell().Text(f.Name).FontSize(9);
-                        table.Cell().Text(f.Isin.ToString()).FontSize(9);
-                        table.Cell().Text(f.Category).FontSize(9);
-                        table.Cell().Text($"{perf?.Return1Year.Value ?? 0:F2}%").FontSize(9);
-                        table.Cell().Text($"{(int)f.Rating}").FontSize(9);
-                        table.Cell().Text($"{f.ExpenseRatio.Value:F2}%").FontSize(9);
+                        var bg = i % 2 == 0 ? Colors.White : Colors.Grey.Lighten4;
+                        void DataCell(IContainer c, string text) =>
+                            c.Background(bg).Padding(3).Text(text).FontSize(9);
+                        DataCell(table.Cell(), $"{i + 1}");
+                        DataCell(table.Cell(), f.Name);
+                        DataCell(table.Cell(), f.Isin.ToString());
+                        DataCell(table.Cell(), f.Category);
+                        DataCell(table.Cell(), $"{perf?.Return1Year.Value ?? 0:F2}%");
+                        DataCell(table.Cell(), $"{"★".PadLeft((int)f.Rating, '★')}");
+                        DataCell(table.Cell(), $"{f.ExpenseRatio.Value:F2}%");
                     }
                 });
-                page.Footer().AlignCenter().Text(t =>
-                {
-                    t.Span("Generado el ").FontSize(8);
-                    t.Span(DateTime.Now.ToString("dd/MM/yyyy HH:mm")).FontSize(8).Bold();
-                    t.Span(" · economIA v2").FontSize(8);
-                });
+                AddPdfFooter(page);
             });
         });
 
@@ -126,6 +280,18 @@ public class ExportService : IExportService
 
         var name = watchlist?.Name ?? "Cartera";
         var items = watchlist?.Items.ToList() ?? [];
+
+        if (format == "md")
+        {
+            var sb = new StringBuilder();
+            sb.AppendLine($"# economIA — {name}");
+            sb.AppendLine($"*Generado: {DateTime.Now:dd/MM/yyyy HH:mm}*\n");
+            sb.AppendLine("| Tipo | Posición | Notas | Prioridad | Fecha |");
+            sb.AppendLine("|------|----------|-------|-----------|-------|");
+            foreach (var item in items)
+                sb.AppendLine($"| {item.EntityType} | {item.PositionType} | {item.Notes ?? "-"} | {item.Priority} | {item.CreatedAt:dd/MM/yyyy} |");
+            return new ExportResult(Encoding.UTF8.GetBytes(sb.ToString()), "text/markdown", $"{name}_{DateTime.Now:yyyyMMdd}.md");
+        }
 
         if (format == "excel")
         {
@@ -158,20 +324,27 @@ public class ExportService : IExportService
             {
                 page.Size(PageSizes.A4);
                 page.Margin(30);
-                page.Header().Text($"economIA — {name}").FontSize(16).Bold();
+                AddPdfHeader(page, name);
                 page.Content().PaddingVertical(10).Table(table =>
                 {
                     table.ColumnsDefinition(c => { c.RelativeColumn(1); c.RelativeColumn(1); c.RelativeColumn(3); c.RelativeColumn(1); });
-                    table.Header(h => { h.Cell().Text("Tipo").Bold(); h.Cell().Text("Posición").Bold(); h.Cell().Text("Notas").Bold(); h.Cell().Text("Fecha").Bold(); });
-                    foreach (var item in items)
+                    table.Header(h =>
                     {
-                        table.Cell().Text(item.EntityType).FontSize(10);
-                        table.Cell().Text(item.PositionType).FontSize(10);
-                        table.Cell().Text(item.Notes ?? "").FontSize(10);
-                        table.Cell().Text(item.CreatedAt.ToString("dd/MM/yyyy")).FontSize(10);
+                        void H(IContainer c, string t) => c.Background(BrandColor).Padding(4).Text(t).FontSize(9).Bold().FontColor(Colors.White);
+                        H(h.Cell(), "Tipo"); H(h.Cell(), "Posición"); H(h.Cell(), "Notas"); H(h.Cell(), "Fecha");
+                    });
+                    for (int i = 0; i < items.Count; i++)
+                    {
+                        var item = items[i];
+                        var bg = i % 2 == 0 ? Colors.White : Colors.Grey.Lighten4;
+                        void D(IContainer c, string t) => c.Background(bg).Padding(3).Text(t).FontSize(10);
+                        D(table.Cell(), item.EntityType);
+                        D(table.Cell(), item.PositionType);
+                        D(table.Cell(), item.Notes ?? "");
+                        D(table.Cell(), item.CreatedAt.ToString("dd/MM/yyyy"));
                     }
                 });
-                page.Footer().AlignCenter().Text($"Generado: {DateTime.Now:dd/MM/yyyy HH:mm}").FontSize(8);
+                AddPdfFooter(page);
             });
         });
         return new ExportResult(pdf.GeneratePdf(), "application/pdf", $"{name}_{DateTime.Now:yyyyMMdd}.pdf");
@@ -184,6 +357,18 @@ public class ExportService : IExportService
             .FirstOrDefaultAsync(c => c.Id == Guid.Parse(callId));
 
         var title = call != null ? $"{call.CompanyName} Q{call.FiscalQuarter} {call.FiscalYear}" : "Llamada";
+
+        if (format == "md")
+        {
+            var sb = new StringBuilder();
+            sb.AppendLine($"# Llamada de Resultados: {title}");
+            sb.AppendLine($"*Generado: {DateTime.Now:dd/MM/yyyy HH:mm}*\n");
+            sb.AppendLine($"**Sentimiento:** {call?.Sentiment ?? "N/A"}\n");
+            if (call?.Summary != null) { sb.AppendLine("## Resumen\n"); sb.AppendLine(call.Summary + "\n"); }
+            if (call?.Guidance != null) { sb.AppendLine("## Previsiones\n"); sb.AppendLine(call.Guidance + "\n"); }
+            if (call?.KeyMetrics != null) { sb.AppendLine("## Métricas Clave\n"); sb.AppendLine(call.KeyMetrics + "\n"); }
+            return new ExportResult(Encoding.UTF8.GetBytes(sb.ToString()), "text/markdown", $"earnings_{title.Replace(' ', '_')}_{DateTime.Now:yyyyMMdd}.md");
+        }
 
         if (format == "excel")
         {
@@ -208,27 +393,41 @@ public class ExportService : IExportService
             {
                 page.Size(PageSizes.A4);
                 page.Margin(30);
-                page.Header().Text($"economIA — Llamada de Resultados: {title}").FontSize(14).Bold();
+                AddPdfHeader(page, $"Llamada de Resultados: {title}");
                 page.Content().PaddingVertical(10).Column(col =>
                 {
+                    col.Item().Background(Colors.Grey.Lighten4).Padding(8).Row(row =>
+                    {
+                        row.RelativeItem().Text(t =>
+                        {
+                            t.Span("Sentimiento: ").FontSize(10).Bold();
+                            t.Span(call?.Sentiment ?? "N/A").FontSize(10);
+                        });
+                    });
+                    col.Item().PaddingTop(8);
+
                     if (call?.Summary != null)
                     {
-                        col.Item().Text("Resumen").Bold().FontSize(12);
-                        col.Item().PaddingBottom(5).Text(call.Summary).FontSize(10);
+                        col.Item().Text("Resumen").Bold().FontSize(13).FontColor(BrandColor);
+                        col.Item().PaddingBottom(2).LineHorizontal(0.5f).LineColor(Colors.Grey.Lighten2);
+                        RenderMarkdownToPdf(col, call.Summary);
+                        col.Item().PaddingTop(8);
                     }
                     if (call?.Guidance != null)
                     {
-                        col.Item().Text("Previsiones").Bold().FontSize(12);
-                        col.Item().PaddingBottom(5).Text(call.Guidance).FontSize(10);
+                        col.Item().Text("Previsiones").Bold().FontSize(13).FontColor(BrandColor);
+                        col.Item().PaddingBottom(2).LineHorizontal(0.5f).LineColor(Colors.Grey.Lighten2);
+                        RenderMarkdownToPdf(col, call.Guidance);
+                        col.Item().PaddingTop(8);
                     }
                     if (call?.KeyMetrics != null)
                     {
-                        col.Item().Text("Métricas Clave").Bold().FontSize(12);
-                        col.Item().PaddingBottom(5).Text(call.KeyMetrics).FontSize(10);
+                        col.Item().Text("Métricas Clave").Bold().FontSize(13).FontColor(BrandColor);
+                        col.Item().PaddingBottom(2).LineHorizontal(0.5f).LineColor(Colors.Grey.Lighten2);
+                        RenderMarkdownToPdf(col, call.KeyMetrics);
                     }
-                    col.Item().PaddingTop(10).Text($"Sentimiento: {call?.Sentiment ?? "N/A"}").FontSize(10).Italic();
                 });
-                page.Footer().AlignCenter().Text($"Generado: {DateTime.Now:dd/MM/yyyy HH:mm}").FontSize(8);
+                AddPdfFooter(page);
             });
         });
         return new ExportResult(pdf.GeneratePdf(), "application/pdf", $"earnings_{title.Replace(' ', '_')}_{DateTime.Now:yyyyMMdd}.pdf");
@@ -241,6 +440,15 @@ public class ExportService : IExportService
             .FirstOrDefaultAsync(r => r.Id == Guid.Parse(reportId));
 
         var title = report?.Title ?? "Informe";
+
+        if (format == "md")
+        {
+            var sb = new StringBuilder();
+            sb.AppendLine($"# {title}");
+            sb.AppendLine($"*Tipo: {report?.ReportType ?? "N/A"} · Generado: {report?.CreatedAt:dd/MM/yyyy HH:mm}*\n");
+            sb.AppendLine(report?.Content ?? "Sin contenido");
+            return new ExportResult(Encoding.UTF8.GetBytes(sb.ToString()), "text/markdown", $"informe_{DateTime.Now:yyyyMMdd}.md");
+        }
 
         if (format == "excel")
         {
@@ -262,15 +470,63 @@ public class ExportService : IExportService
             {
                 page.Size(PageSizes.A4);
                 page.Margin(30);
-                page.Header().Text($"economIA — {title}").FontSize(14).Bold();
+                AddPdfHeader(page, title);
                 page.Content().PaddingVertical(10).Column(col =>
                 {
-                    col.Item().Text($"Tipo: {report?.ReportType}").FontSize(10).Italic();
-                    col.Item().PaddingTop(10).Text(report?.Content ?? "Sin contenido").FontSize(10);
+                    col.Item().Background(Colors.Grey.Lighten4).Padding(6)
+                        .Text($"Tipo: {report?.ReportType ?? "N/A"}").FontSize(10).Italic().FontColor(Colors.Grey.Darken2);
+                    col.Item().PaddingTop(8);
+                    RenderMarkdownToPdf(col, report?.Content ?? "Sin contenido");
                 });
-                page.Footer().AlignCenter().Text($"Generado: {DateTime.Now:dd/MM/yyyy HH:mm}").FontSize(8);
+                AddPdfFooter(page);
             });
         });
         return new ExportResult(pdf.GeneratePdf(), "application/pdf", $"informe_{DateTime.Now:yyyyMMdd}.pdf");
+    }
+
+    public ExportResult ExportBriefing(string format, string title, string content, string? sources = null)
+    {
+        var safeTitle = Regex.Replace(title, @"[^\w\s-]", "").Replace(' ', '_');
+
+        if (format == "md")
+        {
+            var sb = new StringBuilder();
+            sb.AppendLine($"# {title}");
+            sb.AppendLine($"*Generado: {DateTime.Now:dd/MM/yyyy HH:mm}*\n");
+            sb.AppendLine(content);
+            if (!string.IsNullOrWhiteSpace(sources))
+            {
+                sb.AppendLine("\n---\n");
+                sb.AppendLine($"**Fuentes:** {sources}");
+            }
+            return new ExportResult(Encoding.UTF8.GetBytes(sb.ToString()), "text/markdown", $"briefing_{safeTitle}_{DateTime.Now:yyyyMMdd}.md");
+        }
+
+        // PDF
+        var pdf = Document.Create(container =>
+        {
+            container.Page(page =>
+            {
+                page.Size(PageSizes.A4);
+                page.Margin(30);
+                AddPdfHeader(page, title);
+                page.Content().PaddingVertical(10).Column(col =>
+                {
+                    RenderMarkdownToPdf(col, content);
+
+                    if (!string.IsNullOrWhiteSpace(sources))
+                    {
+                        col.Item().PaddingTop(12).LineHorizontal(0.5f).LineColor(Colors.Grey.Lighten2);
+                        col.Item().PaddingTop(4).Text(t =>
+                        {
+                            t.Span("Fuentes: ").FontSize(8).Bold().FontColor(Colors.Grey.Darken1);
+                            t.Span(sources).FontSize(8).FontColor(Colors.Grey.Medium);
+                        });
+                    }
+                });
+                AddPdfFooter(page);
+            });
+        });
+        return new ExportResult(pdf.GeneratePdf(), "application/pdf", $"briefing_{safeTitle}_{DateTime.Now:yyyyMMdd}.pdf");
     }
 }

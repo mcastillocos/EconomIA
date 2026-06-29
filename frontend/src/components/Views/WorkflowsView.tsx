@@ -32,7 +32,7 @@ export default function WorkflowsView() {
   const [input, setInput] = useState('');
   const [expandedStep, setExpandedStep] = useState<number | null>(null);
 
-  const { data: workflows = [] } = useQuery<WorkflowSummary[]>({
+  const { data: workflows = [], isLoading, isError, error } = useQuery<WorkflowSummary[]>({
     queryKey: ['workflows'],
     queryFn: async () => (await axios.get('/api/workflows')).data,
   });
@@ -67,6 +67,23 @@ export default function WorkflowsView() {
         <GitBranch className="h-6 w-6 text-purple-500" />
         <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100">Flujos Multi-Agente</h2>
       </div>
+
+      {/* Estado de carga/error */}
+      {isLoading && (
+        <div className="flex items-center gap-2 text-gray-500">
+          <Loader2 className="h-4 w-4 animate-spin" /> Cargando flujos...
+        </div>
+      )}
+      {isError && (
+        <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-3 text-sm text-red-700 dark:text-red-300">
+          Error cargando flujos: {(error as Error)?.message || 'Verifica que el backend esté activo'}
+        </div>
+      )}
+      {!isLoading && !isError && workflows.length === 0 && (
+        <div className="text-gray-500 dark:text-gray-400 text-sm">
+          No hay flujos disponibles. Asegúrate de que el backend está activo.
+        </div>
+      )}
 
       {/* Selector de workflow */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">

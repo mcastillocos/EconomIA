@@ -41,4 +41,13 @@ public class ExportController : ControllerBase
         var result = await _export.ExportReportAsync(format, reportId);
         return File(result.FileContent, result.ContentType, result.FileName);
     }
+
+    [HttpPost("briefing")]
+    public IActionResult ExportBriefing([FromBody] ExportBriefingRequest request, [FromQuery] string format = "pdf")
+    {
+        var result = _export.ExportBriefing(format, request.Title, request.Content, request.Sources);
+        return File(result.FileContent, result.ContentType, result.FileName);
+    }
 }
+
+public record ExportBriefingRequest(string Title, string Content, string? Sources = null);

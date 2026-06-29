@@ -20,7 +20,7 @@ Write-Host ""
 # ---- 1. Docker Compose ----
 if (-not $SkipDocker) {
     Write-Host "[1/3] Levantando infraestructura Docker..." -ForegroundColor Yellow
-    $dockerCompose = Join-Path $root "docker\docker-compose.yml"
+    $dockerCompose = Join-Path $root "docker\docker-compose.local.yml"
     
     if (-not (Get-Command docker -ErrorAction SilentlyContinue)) {
         Write-Host "  ERROR: Docker no encontrado en PATH" -ForegroundColor Red

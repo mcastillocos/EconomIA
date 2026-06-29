@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { watchlistsApi } from '../../services/watchlistsApi';
 import type { Watchlist, CreateWatchlistRequest } from '../../types/watchlist';
 import { appLog } from '../../store/logStore';
+import { ExportButton } from '../Dashboard/ExportButton';
 
 export function WatchlistsView() {
   const [watchlists, setWatchlists] = useState<Watchlist[]>([]);
@@ -46,12 +47,15 @@ export function WatchlistsView() {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h2 className="text-xl font-semibold text-gray-800 dark:text-gray-100">Carteras / Seguimiento</h2>
-        <button
-          onClick={() => setShowForm(true)}
-          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium"
-        >
-          + Nueva Cartera
-        </button>
+        <div className="flex gap-2">
+          <ExportButton endpoint="/api/export/funds" label="Exportar" />
+          <button
+            onClick={() => setShowForm(true)}
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium"
+          >
+            + Nueva Cartera
+          </button>
+        </div>
       </div>
 
       {showForm && (

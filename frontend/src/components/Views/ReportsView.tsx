@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
+import { ExportButton } from '../Dashboard/ExportButton';
 
 interface ReportSummary {
   id: string;
@@ -65,7 +66,10 @@ export function ReportsView() {
 
   return (
     <div className="space-y-4">
-      <h2 className="text-xl font-semibold text-gray-800 dark:text-gray-100">Informes IA</h2>
+      <div className="flex items-center justify-between">
+        <h2 className="text-xl font-semibold text-gray-800 dark:text-gray-100">Informes IA</h2>
+        {selected && <ExportButton endpoint={`/api/export/report/${selected.id}`} label="Exportar informe" />}
+      </div>
 
       {/* Generator */}
       <div className="bg-white dark:bg-[#2a2a2a] rounded-xl border border-gray-200 dark:border-gray-700 p-4">

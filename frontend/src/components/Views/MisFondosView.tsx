@@ -8,6 +8,7 @@ import type { Fund } from '../../types/fund';
 import { useMyFundsStore, compareFundVsTop, type MyFund } from '../../store/myFundsStore';
 import { useConfigStore } from '../../store/configStore';
 import { appLog } from '../../store/logStore';
+import { ExportButton } from '../Dashboard/ExportButton';
 import clsx from 'clsx';
 
 interface AIRanking {
@@ -106,6 +107,7 @@ export function MisFondosView({ topFunds }: Props) {
           </p>
         </div>
         <div className="flex gap-2">
+          <ExportButton endpoint="/api/export/funds" label="Exportar" />
           {myFunds.length >= 2 && (
             <button
               onClick={handleAIAnalysis}

@@ -19,39 +19,68 @@ public class RedisCacheService : ICacheService
 
     public async Task<T?> GetAsync<T>(string key, CancellationToken ct = default)
     {
-        var db = _redis.GetDatabase();
-        var value = await db.StringGetAsync(key);
-
-        if (value.IsNullOrEmpty)
+        try
         {
-            OpenTelemetryConfig.CacheMisses.Add(1, new KeyValuePair<string, object?>("cache.key", key));
-            _logger.LogDebug("Cache MISS for key: {Key}", key);
+            if (!_redis.IsConnected) return default;
+            var db = _redis.GetDatabase();
+            var value = await db.StringGetAsync(key);
+
+            if (value.IsNullOrEmpty)
+            {
+                OpenTelemetryConfig.CacheMisses.Add(1, new KeyValuePair<string, object?>("cache.key", key));
+                return default;
+            }
+
+            OpenTelemetryConfig.CacheHits.Add(1, new KeyValuePair<string, object?>("cache.key", key));
+            return JsonSerializer.Deserialize<T>((string)value!);
+        }
+        catch (RedisConnectionException)
+        {
+            _logger.LogDebug("Redis no disponible, cache MISS para {Key}", key);
             return default;
         }
-
-        OpenTelemetryConfig.CacheHits.Add(1, new KeyValuePair<string, object?>("cache.key", key));
-        _logger.LogDebug("Cache HIT for key: {Key}", key);
-        return JsonSerializer.Deserialize<T>((string)value!);
     }
 
     public async Task SetAsync<T>(string key, T value, TimeSpan? expiry = null, CancellationToken ct = default)
     {
-        var db = _redis.GetDatabase();
-        var json = JsonSerializer.Serialize(value);
-        await db.StringSetAsync(key, json, expiry ?? TimeSpan.FromMinutes(10));
-        _logger.LogDebug("Cache SET for key: {Key}", key);
+        try
+        {
+            if (!_redis.IsConnected) return;
+            var db = _redis.GetDatabase();
+            var json = JsonSerializer.Serialize(value);
+            await db.StringSetAsync(key, json, expiry ?? TimeSpan.FromMinutes(10));
+        }
+        catch (RedisConnectionException)
+        {
+            _logger.LogDebug("Redis no disponible, cache SET ignorado para {Key}", key);
+        }
     }
 
     public async Task RemoveAsync(string key, CancellationToken ct = default)
     {
-        var db = _redis.GetDatabase();
-        await db.KeyDeleteAsync(key);
-        _logger.LogDebug("Cache REMOVE for key: {Key}", key);
+        try
+        {
+            if (!_redis.IsConnected) return;
+            var db = _redis.GetDatabase();
+            await db.KeyDeleteAsync(key);
+        }
+        catch (RedisConnectionException)
+        {
+            _logger.LogDebug("Redis no disponible, cache REMOVE ignorado para {Key}", key);
+        }
     }
 
     public async Task<bool> ExistsAsync(string key, CancellationToken ct = default)
     {
-        var db = _redis.GetDatabase();
-        return await db.KeyExistsAsync(key);
+        try
+        {
+            if (!_redis.IsConnected) return false;
+            var db = _redis.GetDatabase();
+            return await db.KeyExistsAsync(key);
+        }
+        catch (RedisConnectionException)
+        {
+            return false;
+        }
     }
 }

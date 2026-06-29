@@ -16,17 +16,17 @@ public class RssNewsConnector : IDataConnector
     private readonly HttpClient _httpClient;
     private readonly ILogger<RssNewsConnector>? _logger;
 
-    // Feeds RSS financieros públicos
+    // Feeds RSS financieros públicos (fuentes que no bloquean)
     private static readonly string[] DefaultFeeds =
     [
-        "https://feeds.reuters.com/reuters/businessNews",
-        "https://feeds.reuters.com/reuters/companyNews",
-        "https://www.investing.com/rss/news.rss",
         "https://www.cnbc.com/id/100003114/device/rss/rss.html", // CNBC Finance
-        "https://feeds.bbci.co.uk/news/business/rss.xml",
-        "https://rss.nytimes.com/services/xml/rss/nyt/Business.xml",
-        "https://www.ft.com/rss/companies",
-        "https://seekingalpha.com/market_currents.xml",
+        "https://feeds.bbci.co.uk/news/business/rss.xml",        // BBC Business
+        "https://rss.nytimes.com/services/xml/rss/nyt/Business.xml", // NYT Business
+        "https://seekingalpha.com/market_currents.xml",           // Seeking Alpha
+        "https://finance.yahoo.com/news/rssindex",               // Yahoo Finance
+        "https://www.marketwatch.com/rss/topstories",            // MarketWatch
+        "https://www.economist.com/finance-and-economics/rss.xml", // The Economist
+        "https://www.bloomberg.com/feed/podcast/etf-report.xml", // Bloomberg ETF
     ];
 
     public RssNewsConnector(HttpClient httpClient, ILogger<RssNewsConnector>? logger = null)
@@ -79,7 +79,10 @@ public class RssNewsConnector : IDataConnector
         {
             try
             {
-                using var response = await _httpClient.GetAsync(feedUrl, ct);
+                using var request = new HttpRequestMessage(HttpMethod.Get, feedUrl);
+                request.Headers.Add("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 EconomIA/2.1");
+                request.Headers.Add("Accept", "application/rss+xml, application/xml, text/xml, */*");
+                using var response = await _httpClient.SendAsync(request, ct);
                 if (!response.IsSuccessStatusCode)
                 {
                     _logger?.LogWarning("Feed {Url} devolvió {Status}", feedUrl, response.StatusCode);

@@ -26,6 +26,7 @@ import WorkflowsView from './components/Views/WorkflowsView';
 import ChecklistsView from './components/Views/ChecklistsView';
 import EarningsCallsView from './components/Views/EarningsCallsView';
 import AlertsView from './components/Views/AlertsView';
+import PortfolioOptimizerView from './components/Views/PortfolioOptimizerView';
 import { appLog } from './store/logStore';
 import { getViewFromPath, getPathFromView } from './config/routes';
 
@@ -112,6 +113,7 @@ function App() {
             {activeView === 'checklists' && <ChecklistsView />}
             {activeView === 'earnings' && <EarningsCallsView />}
             {activeView === 'alerts' && <AlertsView />}
+            {activeView === 'optimizer' && <PortfolioOptimizerView />}
             {activeView === 'logs' && <LogsView />}
             {activeView === 'stats' && <StatsView />}
             {activeView === 'config' && <ConfigView onReload={handleReload} />}

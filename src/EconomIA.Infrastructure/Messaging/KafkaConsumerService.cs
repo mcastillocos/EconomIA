@@ -54,6 +54,12 @@ public class KafkaConsumerService : BackgroundService
                 catch (ConsumeException ex)
                 {
                     _logger.LogError(ex, "Error consuming Kafka message");
+                    await Task.Delay(5000, stoppingToken);
+                }
+                catch (Exception ex) when (ex is not OperationCanceledException)
+                {
+                    _logger.LogError(ex, "Kafka connection error, retrying in 10s...");
+                    await Task.Delay(10000, stoppingToken);
                 }
             }
         }, stoppingToken);

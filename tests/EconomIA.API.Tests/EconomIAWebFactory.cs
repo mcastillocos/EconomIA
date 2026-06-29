@@ -1,3 +1,4 @@
+using EconomIA.Application.Interfaces;
 using EconomIA.Domain.Entities;
 using EconomIA.Domain.Ports;
 using EconomIA.Domain.ValueObjects;
@@ -14,6 +15,13 @@ namespace EconomIA.API.Tests;
 public class EconomIAWebFactory : WebApplicationFactory<Program>
 {
     private readonly string _dbName = "TestDb_" + Guid.NewGuid();
+    private ILlmService? _llmService;
+
+    public EconomIAWebFactory WithLlmService(ILlmService llm)
+    {
+        _llmService = llm;
+        return this;
+    }
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
@@ -68,6 +76,15 @@ public class EconomIAWebFactory : WebApplicationFactory<Program>
                 .Where(d => d.ServiceType == typeof(Microsoft.Extensions.Hosting.IHostedService))
                 .ToList();
             foreach (var hs in hostedServices) services.Remove(hs);
+
+            // Registrar ILlmService fake si se proporcionó
+            if (_llmService is not null)
+            {
+                var llmDescriptor = services.SingleOrDefault(
+                    d => d.ServiceType == typeof(ILlmService));
+                if (llmDescriptor != null) services.Remove(llmDescriptor);
+                services.AddSingleton(_llmService);
+            }
 
             // Asegurar que la DB InMemory se crea al iniciar
             var sp = services.BuildServiceProvider();

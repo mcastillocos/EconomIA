@@ -5,13 +5,14 @@ interface ExportButtonProps {
   endpoint: string;
   label?: string;
   className?: string;
+  formats?: ('pdf' | 'excel' | 'md')[];
 }
 
-export function ExportButton({ endpoint, label = 'Exportar', className = '' }: ExportButtonProps) {
+export function ExportButton({ endpoint, label = 'Exportar', className = '', formats = ['pdf', 'excel', 'md'] }: ExportButtonProps) {
   const [loading, setLoading] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
 
-  const handleExport = async (format: 'pdf' | 'excel') => {
+  const handleExport = async (format: 'pdf' | 'excel' | 'md') => {
     setLoading(true);
     setShowMenu(false);
     try {
@@ -23,7 +24,7 @@ export function ExportButton({ endpoint, label = 'Exportar', className = '' }: E
       const a = document.createElement('a');
       a.href = url;
       const disposition = res.headers.get('content-disposition');
-      const filename = disposition?.match(/filename="?([^"]+)"?/)?.[1] ?? `export.${format === 'excel' ? 'xlsx' : 'pdf'}`;
+      const filename = disposition?.match(/filename="?([^"]+)"?/)?.[1] ?? `export.${format === 'excel' ? 'xlsx' : format}`;
       a.download = filename;
       document.body.appendChild(a);
       a.click();
@@ -48,18 +49,30 @@ export function ExportButton({ endpoint, label = 'Exportar', className = '' }: E
       </button>
       {showMenu && (
         <div className="absolute right-0 top-full mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-50 overflow-hidden">
-          <button
-            onClick={() => handleExport('pdf')}
-            className="w-full px-4 py-2 text-sm text-left hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300"
-          >
-            📄 PDF
-          </button>
-          <button
-            onClick={() => handleExport('excel')}
-            className="w-full px-4 py-2 text-sm text-left hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300"
-          >
-            📊 Excel
-          </button>
+          {formats.includes('pdf') && (
+            <button
+              onClick={() => handleExport('pdf')}
+              className="w-full px-4 py-2 text-sm text-left hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300"
+            >
+              📄 PDF
+            </button>
+          )}
+          {formats.includes('excel') && (
+            <button
+              onClick={() => handleExport('excel')}
+              className="w-full px-4 py-2 text-sm text-left hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300"
+            >
+              📊 Excel
+            </button>
+          )}
+          {formats.includes('md') && (
+            <button
+              onClick={() => handleExport('md')}
+              className="w-full px-4 py-2 text-sm text-left hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300"
+            >
+              📝 Markdown
+            </button>
+          )}
         </div>
       )}
     </div>

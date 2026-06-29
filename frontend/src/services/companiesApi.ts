@@ -30,4 +30,9 @@ export const companiesApi = {
   delete: async (id: string): Promise<void> => {
     await api.delete(`/companies/${id}`);
   },
+
+  aiLookup: async (query: string): Promise<CreateCompanyRequest> => {
+    const { data } = await api.post('/companies/ai-lookup', { query });
+    return data;
+  },
 };

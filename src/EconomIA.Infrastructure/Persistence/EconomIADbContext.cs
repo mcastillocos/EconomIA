@@ -22,6 +22,7 @@ public class EconomIADbContext : DbContext
     public DbSet<EarningsCall> EarningsCalls => Set<EarningsCall>();
     public DbSet<InvestorProfile> InvestorProfiles => Set<InvestorProfile>();
     public DbSet<ScreenerRecommendation> ScreenerRecommendations => Set<ScreenerRecommendation>();
+    public DbSet<Alert> Alerts => Set<Alert>();
 
     public EconomIADbContext(DbContextOptions<EconomIADbContext> options) : base(options) { }
 

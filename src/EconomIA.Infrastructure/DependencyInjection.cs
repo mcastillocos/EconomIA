@@ -29,9 +29,20 @@ public static class DependencyInjection
                 configuration.GetConnectionString("SqlServer"),
                 b => b.MigrationsAssembly(typeof(EconomIADbContext).Assembly.FullName)));
 
-        // Redis
+        // Redis (graceful — no crash if unavailable)
         services.AddSingleton<IConnectionMultiplexer>(sp =>
-            ConnectionMultiplexer.Connect(configuration.GetConnectionString("Redis") ?? "localhost:6379"));
+        {
+            try
+            {
+                var redisConn = configuration.GetConnectionString("Redis") ?? "localhost:6379";
+                return ConnectionMultiplexer.Connect($"{redisConn},connectTimeout=3000,abortConnect=false");
+            }
+            catch
+            {
+                // Return a connection that will reconnect when Redis becomes available
+                return ConnectionMultiplexer.Connect("localhost:6379,connectTimeout=1000,abortConnect=false");
+            }
+        });
 
         // Kafka (optional — skip if BootstrapServers is empty)
         var kafkaServers = configuration["Kafka:BootstrapServers"];
@@ -92,12 +103,18 @@ public static class DependencyInjection
 
         // News Connector (real, con HttpClient + resilience)
         // Note: AudioConnectorReal and TranscriptConnectorReal registered above as Scoped (need ILlmService)
-        services.AddHttpClient<RssNewsConnector>()
+        services.AddHttpClient<RssNewsConnector>(client =>
+            {
+                client.Timeout = TimeSpan.FromSeconds(10);
+                client.DefaultRequestHeaders.Add("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) EconomIA/2.1");
+                client.DefaultRequestHeaders.Add("Accept", "application/rss+xml, application/xml, text/xml, */*");
+            })
             .AddStandardResilienceHandler(options =>
             {
-                options.Retry.MaxRetryAttempts = 2;
-                options.Retry.Delay = TimeSpan.FromSeconds(1);
-                options.AttemptTimeout.Timeout = TimeSpan.FromSeconds(15);
+                options.Retry.MaxRetryAttempts = 1;
+                options.Retry.Delay = TimeSpan.FromMilliseconds(500);
+                options.AttemptTimeout.Timeout = TimeSpan.FromSeconds(8);
+                options.TotalRequestTimeout.Timeout = TimeSpan.FromSeconds(15);
                 options.TotalRequestTimeout.Timeout = TimeSpan.FromSeconds(30);
             });
         services.AddSingleton<IDataConnector>(sp => sp.GetRequiredService<RssNewsConnector>());
@@ -149,6 +166,9 @@ public static class DependencyInjection
 
         // Export Service (PDF/Excel)
         services.AddScoped<IExportService, ExportService>();
+
+        // Portfolio Optimizer
+        services.AddScoped<PortfolioOptimizerService>();
 
         // Workflow Engine
         services.AddScoped<WorkflowEngine>();

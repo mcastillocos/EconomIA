@@ -12,6 +12,25 @@ using Serilog;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Cargar variables de entorno desde .env (compartido con frontend)
+var envFile = Path.Combine(builder.Environment.ContentRootPath, "..", "..", "frontend", ".env");
+if (File.Exists(envFile))
+{
+    foreach (var line in File.ReadAllLines(envFile))
+    {
+        var trimmed = line.Trim();
+        if (string.IsNullOrEmpty(trimmed) || trimmed.StartsWith('#')) continue;
+        var idx = trimmed.IndexOf('=');
+        if (idx <= 0) continue;
+        var key = trimmed[..idx];
+        var val = trimmed[(idx + 1)..];
+        if (string.IsNullOrEmpty(Environment.GetEnvironmentVariable(key)))
+            Environment.SetEnvironmentVariable(key, val);
+    }
+    // Re-add env vars so IConfiguration picks up the new values
+    builder.Configuration.AddEnvironmentVariables();
+}
+
 // Serilog
 builder.Host.UseSerilog((context, config) => config
     .ReadFrom.Configuration(context.Configuration)
@@ -63,6 +82,7 @@ var app = builder.Build();
 // Auto-create missing tables for Phase D-F if they don't exist
 try
 {
+    using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
     using var scope = app.Services.CreateScope();
     var db = scope.ServiceProvider.GetRequiredService<EconomIADbContext>();
     await db.Database.ExecuteSqlRawAsync("""
@@ -170,7 +190,7 @@ try
                 ReviewedAt DATETIME2 NULL
             );
         END
-        """);
+        """, cts.Token);
 }
 catch (Exception ex)
 {
@@ -210,6 +230,27 @@ app.MapHealthChecks("/health"); // All checks (backward compat)
 if (!string.IsNullOrWhiteSpace(app.Configuration["OpenTelemetry:OtlpEndpoint"]))
 {
     app.UseOpenTelemetryPrometheusScrapingEndpoint();
+}
+
+// Auto-seed checklists predefinidos si no existen
+using (var scope = app.Services.CreateScope())
+{
+    try
+    {
+        using var seedCts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+        var db = scope.ServiceProvider.GetRequiredService<EconomIA.Infrastructure.Persistence.EconomIADbContext>();
+        if (!db.ChecklistTemplates.Any(t => t.IsBuiltIn))
+        {
+            foreach (var template in EconomIA.Infrastructure.Connectors.PredefinedChecklists.All)
+                db.ChecklistTemplates.Add(template);
+            db.SaveChanges();
+            app.Logger.LogInformation("Checklists predefinidos sembrados: {Count}", EconomIA.Infrastructure.Connectors.PredefinedChecklists.All.Count);
+        }
+    }
+    catch (Exception ex)
+    {
+        app.Logger.LogWarning(ex, "No se pudieron sembrar checklists (la tabla puede no existir aún)");
+    }
 }
 
 app.Run();
