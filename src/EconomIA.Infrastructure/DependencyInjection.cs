@@ -10,6 +10,7 @@ using EconomIA.Infrastructure.Persistence;
 using EconomIA.Infrastructure.Persistence.Repositories;
 using EconomIA.Infrastructure.Scheduling;
 using EconomIA.Infrastructure.Telemetry;
+using EconomIA.Infrastructure.Workflows;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -120,6 +121,9 @@ public static class DependencyInjection
         services.AddScoped<IAgent, FinancialDataExtractorAgent>();
         services.AddScoped<IAgent, RiskAgent>();
         services.AddScoped<IAgentService, AgentService>();
+
+        // Workflow Engine
+        services.AddScoped<WorkflowEngine>();
 
         // Domain Services
         services.AddScoped<FundRankingService>();

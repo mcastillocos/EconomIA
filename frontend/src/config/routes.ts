@@ -16,6 +16,7 @@ export const ROUTES: Record<ViewId, string> = {
   screener: '/ia/screener',
   chat: '/ia/chat',
   agents: '/ia/agentes',
+  workflows: '/ia/workflows',
   logs: '/sistema/logs',
   stats: '/sistema/estadisticas',
   config: '/sistema/config',
