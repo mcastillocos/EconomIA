@@ -50,6 +50,10 @@ export default defineConfig({
         target: 'http://localhost:5000',
         changeOrigin: true,
       },
+      '/api/connectors': {
+        target: 'http://localhost:5000',
+        changeOrigin: true,
+      },
       '/api/reports': {
         target: 'http://localhost:5000',
         changeOrigin: true,
