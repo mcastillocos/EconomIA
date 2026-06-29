@@ -61,11 +61,11 @@ export function ChatView() {
   };
 
   return (
-    <div className="flex flex-col h-[calc(100vh-8rem)]">
-      <h2 className="text-xl font-semibold text-gray-800 dark:text-gray-100 mb-3">Chat IA Financiero</h2>
+    <div className="flex flex-col h-full max-h-[calc(100vh-5rem)] overflow-hidden">
+      <h2 className="text-xl font-semibold text-gray-800 dark:text-gray-100 mb-2 flex-shrink-0">Chat IA Financiero</h2>
 
       {/* Messages area */}
-      <div className="flex-1 overflow-y-auto bg-white dark:bg-[#2a2a2a] rounded-xl border border-gray-200 dark:border-gray-700 p-4 space-y-4">
+      <div className="flex-1 min-h-0 overflow-y-auto bg-white dark:bg-[#2a2a2a] rounded-xl border border-gray-200 dark:border-gray-700 p-4 space-y-4">
         {messages.length === 0 && (
           <div className="text-center py-12 text-gray-400 dark:text-gray-500">
             <div className="text-4xl mb-3">💬</div>
@@ -106,7 +106,7 @@ export function ChatView() {
       </div>
 
       {/* Input area */}
-      <div className="mt-3 flex gap-2">
+      <div className="mt-2 flex gap-2 flex-shrink-0">
         <input
           type="text"
           value={input}
@@ -126,7 +126,7 @@ export function ChatView() {
       </div>
 
       {/* Disclaimer */}
-      <div className="mt-2 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 rounded-lg p-2 text-xs text-amber-800 dark:text-amber-200">
+      <div className="mt-1.5 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 rounded-lg p-2 text-xs text-amber-800 dark:text-amber-200 flex-shrink-0">
         economIA es una herramienta de apoyo al análisis financiero. No constituye recomendación de inversión.
       </div>
     </div>
