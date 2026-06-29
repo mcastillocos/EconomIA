@@ -63,7 +63,7 @@ public static class DependencyInjection
         services.AddScoped<IDataConnector, AudioConnectorReal>();
         services.AddSingleton<IDataConnector, ApiConnector>();
         services.AddSingleton<IDataConnector, ManualConnector>();
-        services.AddSingleton<ConnectorOrchestrator>();
+        services.AddScoped<ConnectorOrchestrator>();
 
         // Audio Transcription (OpenAI Whisper)
         services.AddHttpClient<IAudioTranscriptionService, WhisperTranscriptionService>();

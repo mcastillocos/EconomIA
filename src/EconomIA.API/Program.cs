@@ -61,6 +61,7 @@ builder.Services.AddHealthChecks()
 var app = builder.Build();
 
 // Auto-create missing tables for Phase D-F if they don't exist
+try
 {
     using var scope = app.Services.CreateScope();
     var db = scope.ServiceProvider.GetRequiredService<EconomIADbContext>();
@@ -171,6 +172,10 @@ var app = builder.Build();
         END
         """);
 }
+catch (Exception ex)
+{
+    app.Logger.LogWarning(ex, "No se pudieron crear tablas automáticamente. Se crearán al ejecutar el script SQL manualmente.");
+}
 
 // Middleware
 app.UseMiddleware<ExceptionMiddleware>();
@@ -200,8 +205,11 @@ app.MapHealthChecks("/health/ready", new HealthCheckOptions
 });
 app.MapHealthChecks("/health"); // All checks (backward compat)
 
-// Prometheus metrics endpoint
-app.UseOpenTelemetryPrometheusScrapingEndpoint();
+// Prometheus metrics endpoint (only if OpenTelemetry is configured)
+if (!string.IsNullOrWhiteSpace(app.Configuration["OpenTelemetry:OtlpEndpoint"]))
+{
+    app.UseOpenTelemetryPrometheusScrapingEndpoint();
+}
 
 app.Run();
 
