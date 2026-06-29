@@ -2,6 +2,7 @@ import { useSignalR } from './hooks/useSignalR';
 import { useStreamFunds } from './hooks/useFunds';
 import { useTheme } from './hooks/useTheme';
 import { useEffect, useCallback, useState } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import Header from './components/Layout/Header';
 import Sidebar from './components/Layout/Sidebar';
 import type { ViewId } from './components/Layout/Sidebar';
@@ -21,6 +22,7 @@ import { ScreenerView } from './components/Views/ScreenerView';
 import { ChatView } from './components/Views/ChatView';
 import { AgentsView } from './components/Views/AgentsView';
 import { appLog } from './store/logStore';
+import { getViewFromPath, getPathFromView } from './config/routes';
 
 const FUND_VIEWS: ViewId[] = ['global', 'datos', 'graficas', 'misfondos'];
 
@@ -28,7 +30,9 @@ function App() {
   useSignalR();
   const { isDark, toggle } = useTheme();
   const { funds, isStreaming, workersCompleted, workersTotal, startStream } = useStreamFunds();
-  const [activeView, setActiveView] = useState<ViewId>('overview');
+  const location = useLocation();
+  const navigate = useNavigate();
+  const activeView = getViewFromPath(location.pathname);
   const [fundsLoaded, setFundsLoaded] = useState(false);
 
   useEffect(() => {
@@ -51,9 +55,10 @@ function App() {
   }, [startStream]);
 
   const handleChangeView = useCallback((view: ViewId | string) => {
-    setActiveView(view as ViewId);
+    const path = getPathFromView(view as ViewId);
+    navigate(path);
     appLog.debug('App', `Vista cambiada a: ${view}`);
-  }, []);
+  }, [navigate]);
 
   const isLoading = FUND_VIEWS.includes(activeView) && funds.length === 0 && isStreaming;
   const progress = workersTotal > 0 ? Math.round((workersCompleted / workersTotal) * 100) : 0;

@@ -1,6 +1,8 @@
 import { useState } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { LayoutDashboard, Table2, BarChart3, Briefcase, ScrollText, Settings, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, Activity, Building2, ListChecks, Upload, Database, FileText, Newspaper, Search, MessageSquare, Bot, Home } from 'lucide-react';
 import clsx from 'clsx';
+import { getViewFromPath, getPathFromView } from '../../config/routes';
 
 export type ViewId = 'overview' | 'global' | 'datos' | 'graficas' | 'misfondos' | 'companies' | 'watchlists' | 'uploads' | 'metrics' | 'reports' | 'briefing' | 'screener' | 'chat' | 'agents' | 'logs' | 'stats' | 'config';
 
@@ -38,8 +40,19 @@ interface Props {
   onChangeView: (view: ViewId) => void;
 }
 
-export default function Sidebar({ activeView, onChangeView }: Props) {
+export default function Sidebar({ onChangeView }: Props) {
   const [collapsed, setCollapsed] = useState(false);
+  const location = useLocation();
+  const navigate = useNavigate();
+
+  // Sync with URL - use URL as source of truth for active state
+  const currentView = getViewFromPath(location.pathname);
+
+  const handleNav = (id: ViewId) => {
+    navigate(getPathFromView(id));
+    onChangeView(id);
+  };
+
   const [collapsedSections, setCollapsedSections] = useState<Record<string, boolean>>({
     'Fondos': true,
     'Análisis': true,
@@ -78,7 +91,7 @@ export default function Sidebar({ activeView, onChangeView }: Props) {
         <nav className="flex-1 py-2 px-2 space-y-0.5 overflow-y-auto">
           {grouped.map(({ name, items }) => {
             const isSectionCollapsed = collapsedSections[name] ?? false;
-            const sectionHasActive = items.some(i => i.id === activeView);
+            const sectionHasActive = items.some(i => i.id === currentView);
 
             return (
               <div key={name}>
@@ -100,11 +113,11 @@ export default function Sidebar({ activeView, onChangeView }: Props) {
 
                 {/* Section items */}
                 {(!isSectionCollapsed || collapsed) && items.map((item) => {
-                  const isActive = activeView === item.id;
+                  const isActive = currentView === item.id;
                   return (
                     <button
                       key={item.id}
-                      onClick={() => onChangeView(item.id)}
+                      onClick={() => handleNav(item.id)}
                       className={clsx(
                         'w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors duration-200',
                         isActive
@@ -129,11 +142,11 @@ export default function Sidebar({ activeView, onChangeView }: Props) {
       <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-white dark:bg-[#2a2a2a] border-t border-gray-200 dark:border-gray-700/50 shadow-lg">
         <div className="flex justify-around items-center px-1 py-1">
           {navItems.filter(i => ['overview', 'global', 'chat', 'agents', 'config'].includes(i.id)).map((item) => {
-            const isActive = activeView === item.id;
+            const isActive = currentView === item.id;
             return (
               <button
                 key={item.id}
-                onClick={() => onChangeView(item.id)}
+                onClick={() => handleNav(item.id)}
                 className={clsx(
                   'flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-lg text-[10px] font-medium transition-colors',
                   isActive

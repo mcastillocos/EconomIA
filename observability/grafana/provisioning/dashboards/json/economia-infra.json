@@ -1,0 +1,93 @@
+{
+  "annotations": { "list": [] },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "id": null,
+  "links": [],
+  "panels": [
+    {
+      "title": "Consumer Lag (mensajes pendientes)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+      "targets": [
+        {
+          "expr": "kafka_consumer_lag_sum",
+          "legendFormat": "{{topic}}-{{partition}}"
+        }
+      ]
+    },
+    {
+      "title": "Messages Produced / s",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+      "targets": [
+        {
+          "expr": "sum(rate(kafka_producer_record_send_total[5m]))",
+          "legendFormat": "produce rate"
+        }
+      ]
+    },
+    {
+      "title": "Messages Consumed / s",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
+      "targets": [
+        {
+          "expr": "sum(rate(kafka_consumer_records_consumed_total[5m]))",
+          "legendFormat": "consume rate"
+        }
+      ]
+    },
+    {
+      "title": "SignalR Connections Activas",
+      "type": "gauge",
+      "gridPos": { "h": 8, "w": 6, "x": 12, "y": 8 },
+      "targets": [
+        {
+          "expr": "signalr_connections_current",
+          "legendFormat": "{{hub}}"
+        }
+      ]
+    },
+    {
+      "title": "SignalR Messages Sent / s",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 6, "x": 18, "y": 8 },
+      "targets": [
+        {
+          "expr": "sum(rate(signalr_messages_sent_total[5m]))",
+          "legendFormat": "sent/s"
+        }
+      ]
+    },
+    {
+      "title": "Redis Operaciones / s",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 16 },
+      "targets": [
+        {
+          "expr": "sum(rate(economia_cache_hits_total[5m]) + rate(economia_cache_misses_total[5m]))",
+          "legendFormat": "ops/s"
+        }
+      ]
+    },
+    {
+      "title": "DB Query Duration (avg ms)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 16 },
+      "targets": [
+        {
+          "expr": "rate(db_client_operation_duration_seconds_sum[5m]) / rate(db_client_operation_duration_seconds_count[5m]) * 1000",
+          "legendFormat": "avg query ms"
+        }
+      ]
+    }
+  ],
+  "schemaVersion": 39,
+  "tags": ["economia", "kafka", "signalr", "infra"],
+  "templating": { "list": [] },
+  "time": { "from": "now-1h", "to": "now" },
+  "title": "EconomIA - Infrastructure (Kafka, SignalR, Redis, DB)",
+  "uid": "economia-infra"
+}

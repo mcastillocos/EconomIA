@@ -1,6 +1,7 @@
 using EconomIA.Application.Commands.RefreshMarketData;
 using EconomIA.Application.Commands.UpdateFundPrice;
 using EconomIA.Application.DTOs;
+using EconomIA.Application.Queries.GetFilteredFunds;
 using EconomIA.Application.Queries.GetFundDetail;
 using EconomIA.Application.Queries.GetFundsByRisk;
 using EconomIA.Application.Queries.GetTopFunds;
@@ -44,6 +45,64 @@ public class FundsController : ControllerBase
     {
         var result = await _mediator.Send(new GetFundsByRiskQuery(riskLevel), ct);
         return Ok(result);
+    }
+
+    [HttpGet("filter")]
+    [ProducesResponseType(typeof(FilteredFundsResponse), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetFilteredFunds(
+        [FromQuery] RiskLevel? riskLevel,
+        [FromQuery] string? category,
+        [FromQuery] string? managementCompany,
+        [FromQuery] FundRating? minRating,
+        [FromQuery] decimal? maxExpenseRatio,
+        [FromQuery] decimal? minReturn1Year,
+        [FromQuery] decimal? maxVolatility,
+        [FromQuery] string? search,
+        [FromQuery] FundSortBy sortBy = FundSortBy.Ranking,
+        [FromQuery] bool sortDesc = false,
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 50,
+        CancellationToken ct = default)
+    {
+        if (page < 1) page = 1;
+        if (pageSize is < 1 or > 200) pageSize = 50;
+
+        var query = new GetFilteredFundsQuery
+        {
+            RiskLevel = riskLevel,
+            Category = category,
+            ManagementCompany = managementCompany,
+            MinRating = minRating,
+            MaxExpenseRatio = maxExpenseRatio,
+            MinReturn1Year = minReturn1Year,
+            MaxVolatility = maxVolatility,
+            SearchTerm = search,
+            SortBy = sortBy,
+            SortDescending = sortDesc,
+            Page = page,
+            PageSize = pageSize
+        };
+
+        var result = await _mediator.Send(query, ct);
+        return Ok(result);
+    }
+
+    [HttpGet("categories")]
+    [ProducesResponseType(typeof(IReadOnlyList<string>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetCategories(CancellationToken ct = default)
+    {
+        var repo = HttpContext.RequestServices.GetRequiredService<EconomIA.Domain.Ports.IFundRepository>();
+        var categories = await repo.GetDistinctCategoriesAsync(ct);
+        return Ok(categories);
+    }
+
+    [HttpGet("management-companies")]
+    [ProducesResponseType(typeof(IReadOnlyList<string>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetManagementCompanies(CancellationToken ct = default)
+    {
+        var repo = HttpContext.RequestServices.GetRequiredService<EconomIA.Domain.Ports.IFundRepository>();
+        var companies = await repo.GetDistinctManagementCompaniesAsync(ct);
+        return Ok(companies);
     }
 
     [HttpPost("{id:guid}/price")]

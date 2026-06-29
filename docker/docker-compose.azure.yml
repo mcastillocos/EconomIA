@@ -210,6 +210,7 @@ services:
           memory: 80M
     volumes:
       - ../observability/prometheus.yml:/etc/prometheus/prometheus.yml
+      - ../observability/alert-rules.yml:/etc/prometheus/alert-rules.yml
       - prometheus-data:/prometheus
     networks:
       - economia-net

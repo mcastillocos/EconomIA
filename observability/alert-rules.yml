@@ -1,0 +1,123 @@
+groups:
+  - name: economia-api
+    rules:
+      # Alta tasa de errores HTTP (>5% de las peticiones en 5 min)
+      - alert: HighErrorRate
+        expr: |
+          sum(rate(http_server_request_duration_seconds_count{http_response_status_code=~"5.."}[5m]))
+          /
+          sum(rate(http_server_request_duration_seconds_count[5m]))
+          > 0.05
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Alta tasa de errores HTTP (>5%)"
+          description: "La API está devolviendo más del 5% de respuestas 5xx en los últimos 5 minutos."
+
+      # Latencia alta P95 (>2 segundos)
+      - alert: HighLatencyP95
+        expr: |
+          histogram_quantile(0.95,
+            sum(rate(http_server_request_duration_seconds_bucket[5m])) by (le)
+          ) > 2
+        for: 3m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Latencia P95 superior a 2 segundos"
+          description: "El percentil 95 de latencia HTTP supera 2s durante más de 3 minutos."
+
+      # Latencia alta P99 (>5 segundos)
+      - alert: CriticalLatencyP99
+        expr: |
+          histogram_quantile(0.99,
+            sum(rate(http_server_request_duration_seconds_bucket[5m])) by (le)
+          ) > 5
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Latencia P99 superior a 5 segundos"
+          description: "El percentil 99 de latencia HTTP supera 5s. Posible degradación severa."
+
+  - name: economia-cache
+    rules:
+      # Cache miss rate alto (>80%)
+      - alert: HighCacheMissRate
+        expr: |
+          sum(rate(economia_cache_misses_total[5m]))
+          /
+          (sum(rate(economia_cache_hits_total[5m])) + sum(rate(economia_cache_misses_total[5m])))
+          > 0.8
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Cache miss rate superior al 80%"
+          description: "La tasa de fallos de caché es muy alta. Verificar conectividad Redis o estrategia de caché."
+
+  - name: economia-infra
+    rules:
+      # API caída (sin métricas durante 2 minutos)
+      - alert: ApiDown
+        expr: up{job="economia-api"} == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "economia-api no responde"
+          description: "No se reciben métricas de la API durante más de 2 minutos."
+
+      # OTel Collector caído
+      - alert: OtelCollectorDown
+        expr: up{job="otel-collector"} == 0
+        for: 3m
+        labels:
+          severity: warning
+        annotations:
+          summary: "OTel Collector no responde"
+          description: "El colector de OpenTelemetry lleva más de 3 minutos sin responder."
+
+  - name: economia-llm
+    rules:
+      # LLM latencia alta (>30 segundos promedio)
+      - alert: LlmHighLatency
+        expr: |
+          rate(economia_llm_request_duration_seconds_sum[5m])
+          /
+          rate(economia_llm_request_duration_seconds_count[5m])
+          > 30
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Latencia media LLM superior a 30 segundos"
+          description: "Las llamadas al servicio LLM tardan más de 30s de media."
+
+      # LLM errores altos
+      - alert: LlmHighErrorRate
+        expr: |
+          sum(rate(economia_llm_errors_total[5m]))
+          /
+          sum(rate(economia_llm_requests_total[5m]))
+          > 0.2
+        for: 3m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Tasa de errores LLM superior al 20%"
+          description: "Más del 20% de las llamadas al LLM están fallando."
+
+  - name: economia-funds
+    rules:
+      # Sin actualización de fondos en mucho tiempo
+      - alert: FundsStaleData
+        expr: |
+          time() - economia_last_fund_update_timestamp > 3600
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Datos de fondos desactualizados (>1 hora)"
+          description: "No se han actualizado precios de fondos en más de 1 hora."

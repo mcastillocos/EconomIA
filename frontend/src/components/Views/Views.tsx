@@ -3,9 +3,12 @@ import type { Fund } from '../../types/fund';
 import FundTable from '../Dashboard/FundTable';
 import FundDetailModal from '../Dashboard/FundDetailModal';
 import WhyTheBest from '../Dashboard/WhyTheBest';
-import RiskFilter from '../Filters/RiskFilter';
+import FilterBar from '../Filters/FilterBar';
+import Pagination from '../Filters/Pagination';
 import PerformanceCharts from '../Charts/PerformanceCharts';
 import { useConfigStore } from '../../store/configStore';
+import { useFilterStore } from '../../store/filterStore';
+import { useFilteredFunds } from '../../hooks/useFilteredFunds';
 
 interface Props {
   funds: Fund[];
@@ -15,19 +18,27 @@ interface Props {
 export function GlobalView({ funds, isLoading }: Props) {
   const [selectedFund, setSelectedFund] = useState<Fund | null>(null);
   const totalFunds = useConfigStore((s) => s.totalFunds);
+  const hasActiveFilters = useFilterStore((s) => s.hasActiveFilters());
+  const { data: filtered, isLoading: isFiltering } = useFilteredFunds();
+
+  const displayFunds = hasActiveFilters && filtered ? filtered.items : funds;
+  const loading = hasActiveFilters ? isFiltering : isLoading;
 
   return (
     <>
-      <div className="mb-4 md:mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-        <h2 className="text-xl md:text-2xl font-bold text-gray-900 dark:text-gray-100">
+      <div className="mb-4 md:mb-6">
+        <h2 className="text-xl md:text-2xl font-bold text-gray-900 dark:text-gray-100 mb-3">
           Top {totalFunds} Fondos de Inversión
         </h2>
-        <RiskFilter />
+        <FilterBar />
       </div>
 
-      <WhyTheBest funds={funds} />
-      <PerformanceCharts funds={funds} />
-      {isLoading ? <LoadingSpinner /> : <FundTable funds={funds} onSelectFund={setSelectedFund} />}
+      <WhyTheBest funds={displayFunds} />
+      <PerformanceCharts funds={displayFunds} />
+      {loading ? <LoadingSpinner /> : <FundTable funds={displayFunds} onSelectFund={setSelectedFund} />}
+      {hasActiveFilters && filtered && (
+        <Pagination totalCount={filtered.totalCount} totalPages={filtered.totalPages} />
+      )}
       {selectedFund && <FundDetailModal fund={selectedFund} onClose={() => setSelectedFund(null)} />}
     </>
   );
@@ -35,18 +46,26 @@ export function GlobalView({ funds, isLoading }: Props) {
 
 export function DatosView({ funds, isLoading }: Props) {
   const [selectedFund, setSelectedFund] = useState<Fund | null>(null);
+  const hasActiveFilters = useFilterStore((s) => s.hasActiveFilters());
+  const { data: filtered, isLoading: isFiltering } = useFilteredFunds();
+
+  const displayFunds = hasActiveFilters && filtered ? filtered.items : funds;
+  const loading = hasActiveFilters ? isFiltering : isLoading;
 
   return (
     <>
-      <div className="mb-4 md:mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-        <h2 className="text-xl md:text-2xl font-bold text-gray-900 dark:text-gray-100">
+      <div className="mb-4 md:mb-6">
+        <h2 className="text-xl md:text-2xl font-bold text-gray-900 dark:text-gray-100 mb-3">
           Datos — Tabla de Fondos
         </h2>
-        <RiskFilter />
+        <FilterBar />
       </div>
 
-      <WhyTheBest funds={funds} />
-      {isLoading ? <LoadingSpinner /> : <FundTable funds={funds} onSelectFund={setSelectedFund} />}
+      <WhyTheBest funds={displayFunds} />
+      {loading ? <LoadingSpinner /> : <FundTable funds={displayFunds} onSelectFund={setSelectedFund} />}
+      {hasActiveFilters && filtered && (
+        <Pagination totalCount={filtered.totalCount} totalPages={filtered.totalPages} />
+      )}
       {selectedFund && <FundDetailModal fund={selectedFund} onClose={() => setSelectedFund(null)} />}
     </>
   );
