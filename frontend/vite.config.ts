@@ -116,6 +116,10 @@ export default defineConfig({
         target: 'http://localhost:5000',
         changeOrigin: true,
       },
+      '/api/alerts': {
+        target: 'http://localhost:5000',
+        changeOrigin: true,
+      },
       '/hubs': {
         target: 'http://localhost:5000',
         changeOrigin: true,

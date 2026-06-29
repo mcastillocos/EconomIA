@@ -1,10 +1,10 @@
 import { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, Table2, BarChart3, Briefcase, ScrollText, Settings, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, Activity, Building2, ListChecks, Upload, Database, FileText, Newspaper, Search, MessageSquare, Bot, Home, Rss, GitBranch, ClipboardCheck, Mic } from 'lucide-react';
+import { LayoutDashboard, Table2, BarChart3, Briefcase, ScrollText, Settings, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, Activity, Building2, ListChecks, Upload, Database, FileText, Newspaper, Search, MessageSquare, Bot, Home, Rss, GitBranch, ClipboardCheck, Mic, Bell } from 'lucide-react';
 import clsx from 'clsx';
 import { getViewFromPath, getPathFromView } from '../../config/routes';
 
-export type ViewId = 'overview' | 'global' | 'datos' | 'graficas' | 'misfondos' | 'companies' | 'watchlists' | 'uploads' | 'metrics' | 'reports' | 'briefing' | 'news' | 'screener' | 'chat' | 'agents' | 'workflows' | 'checklists' | 'earnings' | 'logs' | 'stats' | 'config';
+export type ViewId = 'overview' | 'global' | 'datos' | 'graficas' | 'misfondos' | 'companies' | 'watchlists' | 'uploads' | 'metrics' | 'reports' | 'briefing' | 'news' | 'screener' | 'chat' | 'agents' | 'workflows' | 'checklists' | 'earnings' | 'alerts' | 'logs' | 'stats' | 'config';
 
 interface NavItem {
   id: ViewId;
@@ -34,6 +34,7 @@ const navItems: NavItem[] = [
   { id: 'workflows', label: 'Flujos', icon: GitBranch, section: 'IA' },
   { id: 'checklists', label: 'Checklists', icon: ClipboardCheck, section: 'IA' },
   { id: 'earnings', label: 'Llamadas', icon: Mic, section: 'IA' },
+  { id: 'alerts', label: 'Alertas', icon: Bell, section: 'IA' },
   { id: 'logs', label: 'Registros', icon: ScrollText, section: 'Sistema' },
   { id: 'stats', label: 'Estadísticas', icon: Activity, section: 'Sistema' },
   { id: 'config', label: 'Configuración', icon: Settings, section: 'Sistema' },

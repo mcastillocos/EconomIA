@@ -19,6 +19,7 @@ export const ROUTES: Record<ViewId, string> = {
   workflows: '/ia/workflows',
   checklists: '/ia/checklists',
   earnings: '/ia/earnings-calls',
+  alerts: '/ia/alertas',
   logs: '/sistema/logs',
   stats: '/sistema/estadisticas',
   config: '/sistema/config',
