@@ -78,7 +78,10 @@ export default function ChecklistsView() {
   });
 
   const seedMutation = useMutation({
-    mutationFn: () => axios.post('/api/checklists/templates/seed'),
+    mutationFn: async () => {
+      const res = await axios.post('/api/checklists/templates/seed');
+      return res.data;
+    },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['checklist-templates'] }),
   });
 
@@ -129,11 +132,19 @@ export default function ChecklistsView() {
         {templates.length === 0 && (
           <button
             onClick={() => seedMutation.mutate()}
-            className="flex items-center gap-2 px-3 py-1.5 text-sm bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
+            disabled={seedMutation.isPending}
+            className="flex items-center gap-2 px-3 py-1.5 text-sm bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50"
           >
-            <Plus className="h-4 w-4" />
-            Crear templates predefinidos
+            {seedMutation.isPending ? (
+              <span className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+            ) : (
+              <Plus className="h-4 w-4" />
+            )}
+            {seedMutation.isPending ? 'Creando...' : 'Crear templates predefinidos'}
           </button>
+        )}
+        {seedMutation.isError && (
+          <p className="text-sm text-red-500">Error al crear templates. ¿Está el backend activo?</p>
         )}
       </div>
 
