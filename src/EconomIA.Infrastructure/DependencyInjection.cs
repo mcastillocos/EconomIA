@@ -147,6 +147,9 @@ public static class DependencyInjection
         services.AddScoped<IAgent, RiskAgent>();
         services.AddScoped<IAgentService, AgentService>();
 
+        // Export Service (PDF/Excel)
+        services.AddScoped<IExportService, ExportService>();
+
         // Workflow Engine
         services.AddScoped<WorkflowEngine>();
 

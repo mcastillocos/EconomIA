@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import axios from 'axios';
 import { Mic, FileText, Upload, Play, RefreshCw, TrendingUp, TrendingDown, Minus, Clock, AlertCircle, Square, Circle } from 'lucide-react';
+import { ExportButton } from '../Dashboard/ExportButton';
 
 interface EarningsCallSummary {
   id: string;
@@ -461,10 +462,13 @@ export default function EarningsCallsView() {
                   {statusBadge(detail.status)}
                   {sentimentIcon(detail.sentiment)}
                   {detail.status === 'completed' && (
-                    <button onClick={() => reanalyzeMutation.mutate(detail.id)}
-                      className="p-1 text-gray-400 hover:text-purple-600" title="Re-analizar">
-                      <RefreshCw className="h-4 w-4" />
-                    </button>
+                    <>
+                      <button onClick={() => reanalyzeMutation.mutate(detail.id)}
+                        className="p-1 text-gray-400 hover:text-purple-600" title="Re-analizar">
+                        <RefreshCw className="h-4 w-4" />
+                      </button>
+                      <ExportButton endpoint={`/api/export/earnings-call/${detail.id}`} label="Exportar" />
+                    </>
                   )}
                 </div>
               </div>

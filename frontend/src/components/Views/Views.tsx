@@ -6,6 +6,7 @@ import WhyTheBest from '../Dashboard/WhyTheBest';
 import FilterBar from '../Filters/FilterBar';
 import Pagination from '../Filters/Pagination';
 import PerformanceCharts from '../Charts/PerformanceCharts';
+import { ExportButton } from '../Dashboard/ExportButton';
 import { useConfigStore } from '../../store/configStore';
 import { useFilterStore } from '../../store/filterStore';
 import { useFilteredFunds } from '../../hooks/useFilteredFunds';
@@ -27,9 +28,12 @@ export function GlobalView({ funds, isLoading }: Props) {
   return (
     <>
       <div className="mb-4 md:mb-6">
-        <h2 className="text-xl md:text-2xl font-bold text-gray-900 dark:text-gray-100 mb-3">
-          Top {totalFunds} Fondos de Inversión
-        </h2>
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-xl md:text-2xl font-bold text-gray-900 dark:text-gray-100">
+            Top {totalFunds} Fondos de Inversión
+          </h2>
+          <ExportButton endpoint="/api/export/funds" label="Exportar" />
+        </div>
         <FilterBar />
       </div>
 
