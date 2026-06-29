@@ -1,5 +1,6 @@
-import { TrendingUp, Moon, Sun } from 'lucide-react';
+import { TrendingUp, Moon, Sun, Users } from 'lucide-react';
 import { APP_VERSION, GIT_HASH, BUILD_DATE } from 'virtual:app-meta';
+import { usePresenceStore } from '../../store/presenceStore';
 
 interface Props {
   isDark: boolean;
@@ -7,6 +8,8 @@ interface Props {
 }
 
 export default function Header({ isDark, onToggleTheme }: Props) {
+  const onlineCount = usePresenceStore((s) => s.onlineCount);
+
   return (
     <header className="bg-white dark:bg-[#2a2a2a] border-b border-gray-200 dark:border-gray-700/50 shadow-sm transition-colors duration-300 flex-shrink-0">
       <div className="px-3 py-2 md:px-6 md:py-3 flex items-center justify-between">
@@ -23,6 +26,10 @@ export default function Header({ isDark, onToggleTheme }: Props) {
           <span className="inline-flex items-center gap-1.5 text-sm text-green-700 dark:text-green-400 bg-green-50 dark:bg-green-900/30 px-3 py-1 rounded-full">
             <span className="h-2 w-2 rounded-full bg-green-500 animate-pulse"></span>
             En vivo
+          </span>
+          <span className="inline-flex items-center gap-1.5 text-sm text-blue-700 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 px-3 py-1 rounded-full" title={`${onlineCount} persona${onlineCount !== 1 ? 's' : ''} conectada${onlineCount !== 1 ? 's' : ''}`}>
+            <Users className="h-3.5 w-3.5" />
+            {onlineCount}
           </span>
           <button
             onClick={onToggleTheme}

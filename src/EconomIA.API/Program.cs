@@ -193,6 +193,7 @@ app.UseRouting();
 app.MapControllers();
 app.MapHub<FundPriceHub>("/hubs/fund-prices");
 app.MapHub<RankingHub>("/hubs/ranking");
+app.MapHub<PresenceHub>("/hubs/presence");
 
 // Health endpoints
 app.MapHealthChecks("/health/live", new HealthCheckOptions
