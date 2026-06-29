@@ -88,7 +88,7 @@ export function AgentsView() {
               <p className="text-xs text-gray-500 dark:text-gray-400">{agent.description}</p>
             </div>
             <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${statusColors[agent.status]}`}>
-              {agent.status}
+              {agent.status === 'active' ? 'activo' : agent.status === 'planned' ? 'planificado' : agent.status}
             </span>
           </button>
         ))}

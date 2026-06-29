@@ -94,7 +94,7 @@ export function LogsView() {
         )}
         {counts.warn > 0 && (
           <span className="text-yellow-600 dark:text-yellow-400 font-medium">
-            {counts.warn} warnings
+            {counts.warn} avisos
           </span>
         )}
         <span className="text-gray-400 dark:text-gray-600">|</span>

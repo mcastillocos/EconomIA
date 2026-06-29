@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import axios from 'axios';
-import { Mic, FileText, Upload, Play, RefreshCw, TrendingUp, TrendingDown, Minus, Clock, AlertCircle } from 'lucide-react';
+import { Mic, FileText, Upload, Play, RefreshCw, TrendingUp, TrendingDown, Minus, Clock, AlertCircle, Square, Circle } from 'lucide-react';
 
 interface EarningsCallSummary {
   id: string;
@@ -40,7 +40,7 @@ interface EarningsCallDetail {
 export default function EarningsCallsView() {
   const queryClient = useQueryClient();
   const [selectedCall, setSelectedCall] = useState<string | null>(null);
-  const [uploadMode, setUploadMode] = useState<'audio' | 'transcript' | null>(null);
+  const [uploadMode, setUploadMode] = useState<'audio' | 'transcript' | 'microphone' | null>(null);
 
   // Form state
   const [form, setForm] = useState({
@@ -53,6 +53,9 @@ export default function EarningsCallsView() {
     language: 'es',
   });
   const [audioFile, setAudioFile] = useState<File | null>(null);
+  const [isRecording, setIsRecording] = useState(false);
+  const [recordingTime, setRecordingTime] = useState(0);
+  const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null);
 
   const { data: calls = [] } = useQuery<EarningsCallSummary[]>({
     queryKey: ['earnings-calls'],
@@ -113,6 +116,46 @@ export default function EarningsCallsView() {
   const resetForm = () => {
     setForm({ companyName: '', ticker: '', fiscalYear: new Date().getFullYear(), fiscalQuarter: Math.ceil((new Date().getMonth() + 1) / 3), callDate: new Date().toISOString().slice(0, 10), transcript: '', language: 'es' });
     setAudioFile(null);
+    setIsRecording(false);
+    setRecordingTime(0);
+  };
+
+  const startRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const recorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });
+      const chunks: BlobPart[] = [];
+      recorder.ondataavailable = (e) => chunks.push(e.data);
+      recorder.onstop = () => {
+        stream.getTracks().forEach(t => t.stop());
+        const blob = new Blob(chunks, { type: 'audio/webm' });
+        const file = new File([blob], `grabacion_${Date.now()}.webm`, { type: 'audio/webm' });
+        setAudioFile(file);
+      };
+      recorder.start();
+      setMediaRecorder(recorder);
+      setIsRecording(true);
+      setRecordingTime(0);
+      const interval = setInterval(() => {
+        setRecordingTime(t => {
+          if (t >= 3600) { recorder.stop(); clearInterval(interval); return t; }
+          return t + 1;
+        });
+      }, 1000);
+      (recorder as unknown as { _interval: NodeJS.Timeout })._interval = interval;
+    } catch {
+      alert('No se pudo acceder al micrófono. Verifica los permisos del navegador.');
+    }
+  };
+
+  const stopRecording = () => {
+    if (mediaRecorder && mediaRecorder.state === 'recording') {
+      mediaRecorder.stop();
+      const interval = (mediaRecorder as unknown as { _interval: NodeJS.Timeout })._interval;
+      if (interval) clearInterval(interval);
+    }
+    setIsRecording(false);
+    setMediaRecorder(null);
   };
 
   const sentimentIcon = (s?: string) => {
@@ -148,6 +191,12 @@ export default function EarningsCallsView() {
         </div>
         <div className="flex gap-2">
           <button
+            onClick={() => { setUploadMode('microphone'); setSelectedCall(null); }}
+            className="flex items-center gap-1 px-3 py-1.5 text-sm bg-red-600 text-white rounded-lg hover:bg-red-700"
+          >
+            <Mic className="h-4 w-4" /> Micrófono
+          </button>
+          <button
             onClick={() => { setUploadMode('audio'); setSelectedCall(null); }}
             className="flex items-center gap-1 px-3 py-1.5 text-sm bg-purple-600 text-white rounded-lg hover:bg-purple-700"
           >
@@ -157,7 +206,7 @@ export default function EarningsCallsView() {
             onClick={() => { setUploadMode('transcript'); setSelectedCall(null); }}
             className="flex items-center gap-1 px-3 py-1.5 text-sm bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
           >
-            <FileText className="h-4 w-4" /> Transcript
+            <FileText className="h-4 w-4" /> Transcripción
           </button>
         </div>
       </div>
@@ -169,7 +218,7 @@ export default function EarningsCallsView() {
             <div className="text-center py-8 text-gray-400">
               <Mic className="h-10 w-10 mx-auto mb-2 opacity-30" />
               <p className="text-sm">No hay llamadas de resultados aún</p>
-              <p className="text-xs">Sube un audio o pega un transcript</p>
+              <p className="text-xs">Sube un audio o graba desde el micrófono</p>
             </div>
           )}
           {calls.map(c => (
@@ -201,10 +250,92 @@ export default function EarningsCallsView() {
 
         {/* Panel derecho */}
         <div className="lg:col-span-2 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4 max-h-[70vh] overflow-y-auto">
+          {/* Formulario de grabación por micrófono */}
+          {uploadMode === 'microphone' && (
+            <div className="space-y-4">
+              <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100">Grabar desde Micrófono</h3>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs text-gray-500">Empresa*</label>
+                  <input type="text" value={form.companyName} onChange={e => setForm(f => ({ ...f, companyName: e.target.value }))}
+                    placeholder="Apple" className="w-full px-3 py-1.5 text-sm border border-gray-200 dark:border-gray-600 rounded bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100" />
+                </div>
+                <div>
+                  <label className="text-xs text-gray-500">Ticker</label>
+                  <input type="text" value={form.ticker} onChange={e => setForm(f => ({ ...f, ticker: e.target.value }))}
+                    placeholder="AAPL" className="w-full px-3 py-1.5 text-sm border border-gray-200 dark:border-gray-600 rounded bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100" />
+                </div>
+                <div>
+                  <label className="text-xs text-gray-500">Año fiscal*</label>
+                  <input type="number" value={form.fiscalYear} onChange={e => setForm(f => ({ ...f, fiscalYear: +e.target.value }))}
+                    className="w-full px-3 py-1.5 text-sm border border-gray-200 dark:border-gray-600 rounded bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100" />
+                </div>
+                <div>
+                  <label className="text-xs text-gray-500">Trimestre*</label>
+                  <select value={form.fiscalQuarter} onChange={e => setForm(f => ({ ...f, fiscalQuarter: +e.target.value }))}
+                    className="w-full px-3 py-1.5 text-sm border border-gray-200 dark:border-gray-600 rounded bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100">
+                    <option value={1}>Q1</option><option value={2}>Q2</option><option value={3}>Q3</option><option value={4}>Q4</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="text-xs text-gray-500">Fecha de la llamada</label>
+                  <input type="date" value={form.callDate} onChange={e => setForm(f => ({ ...f, callDate: e.target.value }))}
+                    className="w-full px-3 py-1.5 text-sm border border-gray-200 dark:border-gray-600 rounded bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100" />
+                </div>
+              </div>
+
+              {/* Controles de grabación */}
+              <div className="flex flex-col items-center gap-4 py-6 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700">
+                {!isRecording && !audioFile && (
+                  <button onClick={startRecording}
+                    className="flex items-center gap-2 px-6 py-3 bg-red-600 text-white rounded-full hover:bg-red-700 text-sm font-medium shadow-lg hover:shadow-xl transition-all">
+                    <Circle className="h-5 w-5 fill-current" /> Iniciar Grabación
+                  </button>
+                )}
+                {isRecording && (
+                  <>
+                    <div className="flex items-center gap-2">
+                      <span className="h-3 w-3 bg-red-500 rounded-full animate-pulse" />
+                      <span className="text-sm font-medium text-red-600 dark:text-red-400">Grabando...</span>
+                      <span className="text-sm text-gray-500 font-mono">
+                        {Math.floor(recordingTime / 60).toString().padStart(2, '0')}:{(recordingTime % 60).toString().padStart(2, '0')}
+                      </span>
+                    </div>
+                    <button onClick={stopRecording}
+                      className="flex items-center gap-2 px-6 py-3 bg-gray-800 text-white rounded-full hover:bg-gray-900 text-sm font-medium shadow-lg">
+                      <Square className="h-4 w-4 fill-current" /> Detener
+                    </button>
+                  </>
+                )}
+                {audioFile && !isRecording && (
+                  <div className="text-center space-y-2">
+                    <p className="text-sm text-green-600 dark:text-green-400 font-medium">
+                      ✓ Grabación lista: {audioFile.name} ({Math.round(audioFile.size / 1024)} KB)
+                    </p>
+                    <button onClick={() => { setAudioFile(null); setRecordingTime(0); }}
+                      className="text-xs text-gray-500 hover:text-red-500 underline">
+                      Descartar y grabar de nuevo
+                    </button>
+                  </div>
+                )}
+                <p className="text-xs text-gray-400 mt-2">Máx. 60 min · Formato WebM</p>
+              </div>
+
+              <button
+                onClick={() => uploadAudioMutation.mutate()}
+                disabled={!form.companyName || !audioFile || uploadAudioMutation.isPending}
+                className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 flex items-center gap-2"
+              >
+                {uploadAudioMutation.isPending ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />}
+                Transcribir y Analizar
+              </button>
+            </div>
+          )}
+
           {/* Formulario de subida audio */}
           {uploadMode === 'audio' && (
             <div className="space-y-4">
-              <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100">Subir Audio de Earnings Call</h3>
+              <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100">Subir Audio de Llamada de Resultados</h3>
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="text-xs text-gray-500">Empresa*</label>
@@ -254,7 +385,7 @@ export default function EarningsCallsView() {
           {/* Formulario de subida transcript */}
           {uploadMode === 'transcript' && (
             <div className="space-y-4">
-              <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100">Pegar Transcript de Earnings Call</h3>
+              <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100">Pegar Transcripción de Llamada de Resultados</h3>
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="text-xs text-gray-500">Empresa*</label>
@@ -297,7 +428,7 @@ export default function EarningsCallsView() {
                   value={form.transcript}
                   onChange={e => setForm(f => ({ ...f, transcript: e.target.value }))}
                   rows={10}
-                  placeholder="Pega aquí el texto del transcript de la earnings call..."
+                  placeholder="Pega aquí el texto de la transcripción de la llamada de resultados..."
                   className="w-full px-3 py-2 text-sm border border-gray-200 dark:border-gray-600 rounded bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 resize-y"
                 />
               </div>
@@ -307,7 +438,7 @@ export default function EarningsCallsView() {
                 className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50 flex items-center gap-2"
               >
                 {uploadTranscriptMutation.isPending ? <RefreshCw className="h-4 w-4 animate-spin" /> : <FileText className="h-4 w-4" />}
-                Analizar Transcript
+                Analizar Transcripción
               </button>
             </div>
           )}
@@ -354,7 +485,7 @@ export default function EarningsCallsView() {
 
               {detail.guidance && (
                 <div>
-                  <h4 className="text-sm font-semibold text-blue-600 dark:text-blue-400 mb-1">Guidance</h4>
+                  <h4 className="text-sm font-semibold text-blue-600 dark:text-blue-400 mb-1">Previsiones</h4>
                   <p className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap">{detail.guidance}</p>
                 </div>
               )}
@@ -369,7 +500,7 @@ export default function EarningsCallsView() {
               {detail.transcriptText && (
                 <div>
                   <h4 className="text-sm font-semibold text-gray-600 dark:text-gray-400 mb-1">
-                    Transcript ({detail.transcriptText.length.toLocaleString()} chars)
+                    Transcripción ({detail.transcriptText.length.toLocaleString()} caracteres)
                   </h4>
                   <div className="max-h-60 overflow-y-auto p-3 bg-gray-50 dark:bg-gray-900 rounded border border-gray-200 dark:border-gray-700">
                     <p className="text-xs text-gray-600 dark:text-gray-400 whitespace-pre-wrap font-mono">{detail.transcriptText}</p>
@@ -395,7 +526,7 @@ export default function EarningsCallsView() {
           {!detail && !uploadMode && (
             <div className="text-center py-12 text-gray-400">
               <Mic className="h-12 w-12 mx-auto mb-3 opacity-30" />
-              <p>Selecciona una earnings call o sube una nueva</p>
+              <p>Selecciona una llamada o sube una nueva</p>
             </div>
           )}
         </div>

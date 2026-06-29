@@ -26,7 +26,7 @@ export function OverviewView({ onNavigate }: { onNavigate: (view: string) => voi
         { label: 'Documentos', icon: Upload, count: '—', subtitle: 'Subidos', color: 'text-indigo-600 dark:text-indigo-400', view: 'uploads' },
         { label: 'Informes', icon: FileText, count: '—', subtitle: 'Generados', color: 'text-pink-600 dark:text-pink-400', view: 'reports' },
         { label: 'Checklists', icon: ClipboardCheck, count: '—', subtitle: 'Instancias', color: 'text-violet-600 dark:text-violet-400', view: 'checklists' },
-        { label: 'Earnings Calls', icon: Mic, count: '—', subtitle: 'Procesadas', color: 'text-purple-600 dark:text-purple-400', view: 'earnings' },
+        { label: 'Llamadas', icon: Mic, count: '—', subtitle: 'Procesadas', color: 'text-purple-600 dark:text-purple-400', view: 'earnings' },
         { label: 'Recomendaciones', icon: Sparkles, count: '—', subtitle: 'Activas', color: 'text-rose-600 dark:text-rose-400', view: 'screener' },
       ];
 
@@ -125,11 +125,11 @@ export function OverviewView({ onNavigate }: { onNavigate: (view: string) => voi
           <div className="grid grid-cols-2 gap-3">
             {[
               { label: 'Chat IA', view: 'chat', desc: 'Consultas inteligentes', icon: Bot },
-              { label: 'Screener', view: 'screener', desc: 'Recomendaciones personalizadas', icon: Search },
-              { label: 'Earnings Call', view: 'earnings', desc: 'Subir audio/transcript', icon: Mic },
-              { label: 'Checklists', view: 'checklists', desc: 'Due diligence', icon: ClipboardCheck },
-              { label: 'Noticias', view: 'news', desc: 'Briefing diario', icon: Newspaper },
-              { label: 'Workflows', view: 'workflows', desc: 'Automatizaciones', icon: GitBranch },
+              { label: 'Buscador', view: 'screener', desc: 'Recomendaciones personalizadas', icon: Search },
+              { label: 'Llamadas', view: 'earnings', desc: 'Subir audio/transcripción', icon: Mic },
+              { label: 'Checklists', view: 'checklists', desc: 'Diligencia debida', icon: ClipboardCheck },
+              { label: 'Noticias', view: 'news', desc: 'Resumen diario', icon: Newspaper },
+              { label: 'Flujos', view: 'workflows', desc: 'Automatizaciones', icon: GitBranch },
             ].map((a) => (
               <button
                 key={a.view}
@@ -153,11 +153,11 @@ export function OverviewView({ onNavigate }: { onNavigate: (view: string) => voi
           </h3>
           <div className="space-y-2">
             {[
-              { label: 'Transcripción Whisper', desc: 'Audio → texto de earnings calls', status: 'activo' },
-              { label: 'Análisis LLM', desc: 'Resumen, guidance, sentiment de calls', status: 'activo' },
-              { label: 'Learning Screener', desc: 'Perfil inversor + recomendaciones proactivas', status: 'activo' },
-              { label: 'Multi-Agent Workflows', desc: '11 agentes especializados encadenables', status: 'activo' },
-              { label: 'Checklists Inteligentes', desc: '3 templates predefinidos para inversión', status: 'activo' },
+              { label: 'Transcripción Whisper', desc: 'Audio → texto de llamadas de resultados', status: 'activo' },
+              { label: 'Análisis LLM', desc: 'Resumen, previsiones, sentimiento de llamadas', status: 'activo' },
+              { label: 'Buscador Adaptativo', desc: 'Perfil inversor + recomendaciones proactivas', status: 'activo' },
+              { label: 'Flujos Multi-Agente', desc: '11 agentes especializados encadenables', status: 'activo' },
+              { label: 'Checklists Inteligentes', desc: '3 plantillas predefinidas para inversión', status: 'activo' },
               { label: 'Conectores Reales', desc: 'Tikr, Investing, FMP, RSS, PDF, Excel', status: 'activo' },
             ].map((cap) => (
               <div key={cap.label} className="flex items-center justify-between py-1.5 border-b border-gray-100 dark:border-gray-700/50 last:border-0">

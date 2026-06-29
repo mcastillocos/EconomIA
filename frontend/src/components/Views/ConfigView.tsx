@@ -288,7 +288,7 @@ export function ConfigView({ onReload }: Props) {
                 <input type="text" value={newProvider.endpoint} onChange={e => setNewProvider({ ...newProvider, endpoint: e.target.value })} placeholder="https://..." className="w-full px-3 py-1.5 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-sm" />
               </div>
               <div>
-                <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">{newProvider.type === 'claude' ? 'Model' : 'Deployment'}</label>
+                <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">{newProvider.type === 'claude' ? 'Modelo' : 'Despliegue'}</label>
                 <input type="text" value={newProvider.type === 'claude' ? newProvider.model : newProvider.deployment} onChange={e => setNewProvider({ ...newProvider, [newProvider.type === 'claude' ? 'model' : 'deployment']: e.target.value })} placeholder={newProvider.type === 'claude' ? 'claude-opus-4-7' : 'gpt-4o-mini'} className="w-full px-3 py-1.5 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-sm" />
               </div>
               <div className="sm:col-span-2">
@@ -358,7 +358,7 @@ export function ConfigView({ onReload }: Props) {
                   />
                 </div>
                 <div>
-                  <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">{p.name.includes('Claude') ? 'Model' : 'Deployment'}</label>
+                  <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">{p.name.includes('Claude') ? 'Modelo' : 'Despliegue'}</label>
                   <input
                     type="text"
                     value={p.model || p.deployment || ''}

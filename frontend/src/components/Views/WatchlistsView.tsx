@@ -50,7 +50,7 @@ export function WatchlistsView() {
           onClick={() => setShowForm(true)}
           className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium"
         >
-          + Nueva Watchlist
+          + Nueva Cartera
         </button>
       </div>
 
@@ -68,7 +68,7 @@ export function WatchlistsView() {
       {loading ? (
         <p className="text-gray-500 dark:text-gray-400">Cargando...</p>
       ) : watchlists.length === 0 ? (
-        <p className="text-gray-500 dark:text-gray-400">No hay watchlists creadas.</p>
+        <p className="text-gray-500 dark:text-gray-400">No hay carteras creadas.</p>
       ) : (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {watchlists.map(w => (

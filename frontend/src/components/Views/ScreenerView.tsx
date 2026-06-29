@@ -129,7 +129,7 @@ export function ScreenerView() {
     return <Target className="h-4 w-4 text-purple-500" />;
   };
 
-  const allSectors = ['Technology', 'Healthcare', 'Financial', 'Consumer', 'Energy', 'Industrial', 'Materials', 'Real Estate', 'Utilities', 'Communication'];
+  const allSectors = ['Tecnología', 'Salud', 'Financiero', 'Consumo', 'Energía', 'Industrial', 'Materiales', 'Inmobiliario', 'Servicios Públicos', 'Comunicaciones'];
   const allGeos = ['USA', 'Europe', 'España', 'Asia', 'Global', 'Emergentes'];
 
   return (
@@ -179,11 +179,11 @@ export function ScreenerView() {
               <label className="text-xs font-medium text-gray-600 dark:text-gray-400">Estilo de inversión</label>
               <select value={form.investmentStyle} onChange={e => { setForm(f => ({ ...f, investmentStyle: e.target.value })); setFormDirty(true); }}
                 className="w-full mt-1 px-3 py-2 text-sm border border-gray-200 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100">
-                <option value="value">Value</option>
-                <option value="growth">Growth</option>
-                <option value="blend">Blend</option>
-                <option value="income">Income/Dividendos</option>
-                <option value="momentum">Momentum</option>
+                <option value="value">Valor</option>
+                <option value="growth">Crecimiento</option>
+                <option value="blend">Mixto</option>
+                <option value="income">Rentas/Dividendos</option>
+                <option value="momentum">Momento</option>
               </select>
             </div>
             <div>
