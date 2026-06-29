@@ -12,7 +12,7 @@ using Serilog;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Cargar variables de entorno desde .env (compartido con frontend)
+// Cargar variables de entorno desde .env (compartido con frontend, solo en dev local)
 var envFile = Path.Combine(builder.Environment.ContentRootPath, "..", "..", "frontend", ".env");
 if (File.Exists(envFile))
 {
@@ -27,9 +27,9 @@ if (File.Exists(envFile))
         if (string.IsNullOrEmpty(Environment.GetEnvironmentVariable(key)))
             Environment.SetEnvironmentVariable(key, val);
     }
-    // Re-add env vars so IConfiguration picks up the new values
-    builder.Configuration.AddEnvironmentVariables();
 }
+// Siempre registrar env vars en IConfiguration (para Docker y dev local)
+builder.Configuration.AddEnvironmentVariables();
 
 // Serilog
 builder.Host.UseSerilog((context, config) => config

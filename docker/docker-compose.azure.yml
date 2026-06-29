@@ -26,6 +26,13 @@ services:
       - ConnectionStrings__Redis=redis:6379
       - Frontend__Url=http://20.203.185.54:3000
       - Kafka__BootstrapServers=kafka:29092
+      - AZURE_OPENAI_API_KEY0=${AZURE_OPENAI_API_KEY0:-}
+      - AZURE_OPENAI_ENDPOINT0=${AZURE_OPENAI_ENDPOINT0:-}
+      - AZURE_OPENAI_DEPLOYMENT0=${AZURE_OPENAI_DEPLOYMENT0:-}
+      - AZURE_OPENAI_API_VERSION0=${AZURE_OPENAI_API_VERSION0:-}
+      - CLAUDE_API_KEY=${CLAUDE_API_KEY:-}
+      - CLAUDE_ENDPOINT=${CLAUDE_ENDPOINT:-}
+      - CLAUDE_MODEL1=${CLAUDE_MODEL1:-}
     deploy:
       resources:
         limits:
