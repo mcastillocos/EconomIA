@@ -154,19 +154,21 @@ const LLM_PROVIDERS: LLMProvider[] = [
     name: 'GPT-5.4',
     call: (sys, usr, max) => callAzureOpenAI(sys, usr, max, 'gpt-5.4'),
     available: () => !!(process.env.AZURE_OPENAI_API_KEY0 && process.env.AZURE_OPENAI_ENDPOINT0),
-    enabled: true,
+    enabled: false,
   },
   {
     name: 'Claude',
     call: (sys, usr, max) => callClaude(sys, usr, max),
     available: () => !!(process.env.CLAUDE_API_KEY && process.env.CLAUDE_ENDPOINT),
-    enabled: true,
+    enabled: false,
   },
 ];
 
 // ── Provider state persistence ─────────────────────────────────────────
 
-const PROVIDERS_STATE_FILE = resolve(__dirname, '..', '.llm-providers-state.json');
+const PROVIDERS_STATE_FILE = existsSync('/app/state')
+  ? resolve('/app/state', '.llm-providers-state.json')
+  : resolve(__dirname, '..', '.llm-providers-state.json');
 
 interface ProviderState {
   enabled: Record<string, boolean>;

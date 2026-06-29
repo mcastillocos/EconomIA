@@ -165,13 +165,13 @@ const LLM_PROVIDERS: LLMProvider[] = [
     name: 'GPT-5.4',
     call: (env, sys, usr, max) => callAzureOpenAI(env, sys, usr, max, 'gpt-5.4'),
     available: (env) => !!(env.AZURE_OPENAI_API_KEY0 && env.AZURE_OPENAI_ENDPOINT0),
-    enabled: true,
+    enabled: false,
   },
   {
     name: 'Claude',
     call: (env, sys, usr, max) => callClaude(env, sys, usr, max),
     available: (env) => !!(env.CLAUDE_API_KEY && env.CLAUDE_ENDPOINT),
-    enabled: true,
+    enabled: false,
   },
 ];
 

@@ -407,10 +407,10 @@ export function ConfigView({ onReload }: Props) {
       {/* Rate Limiter */}
       {rateLimiter && (
         <section className="bg-white dark:bg-[#2a2a2a] rounded-xl p-5 border border-gray-200 dark:border-gray-700/50">
-          <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">⚡ Rate Limiter (TPM)</h3>
+          <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">⚡ Limitador de tasa (TPM)</h3>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <Stat label="Cuota TPM" value={rateLimiter.tpm.toLocaleString()} />
-            <Stat label="Threshold (90%)" value={rateLimiter.threshold.toLocaleString()} />
+            <Stat label="Umbral (90%)" value={rateLimiter.threshold.toLocaleString()} />
             <Stat label="Uso actual" value={rateLimiter.currentUsage.toLocaleString()} />
             <Stat label="Reservas activas" value={rateLimiter.activeReservations} />
           </div>
@@ -426,7 +426,7 @@ export function ConfigView({ onReload }: Props) {
               />
             </div>
             <p className="text-xs text-gray-400 mt-1 text-right">
-              {Math.round((rateLimiter.currentUsage / rateLimiter.threshold) * 100)}% del threshold
+              {Math.round((rateLimiter.currentUsage / rateLimiter.threshold) * 100)}% del umbral
             </p>
           </div>
         </section>
@@ -435,13 +435,13 @@ export function ConfigView({ onReload }: Props) {
       {/* Worker Config */}
       <section className="bg-white dark:bg-[#2a2a2a] rounded-xl p-5 border border-gray-200 dark:border-gray-700/50">
         <h3 className="flex items-center gap-2 text-sm font-semibold text-gray-700 dark:text-gray-300 mb-4">
-          <Zap className="h-4 w-4" /> Workers paralelos
+          <Zap className="h-4 w-4" /> Trabajadores paralelos
         </h3>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <ConfigField label="Total fondos" value={config.totalFunds} onChange={(v) => updateField('totalFunds', v)} min={10} max={500} step={10} />
-          <ConfigField label="Batch size" value={config.batchSize} onChange={(v) => updateField('batchSize', v)} min={1} max={25} step={1} />
+          <ConfigField label="Tamaño lote" value={config.batchSize} onChange={(v) => updateField('batchSize', v)} min={1} max={25} step={1} />
           <ConfigField label="Workers" value={config.numWorkers} onChange={(v) => updateField('numWorkers', v)} min={1} max={50} step={1} />
-          <ConfigField label="Max concurrente" value={config.maxConcurrent} onChange={(v) => updateField('maxConcurrent', v)} min={1} max={10} step={1} />
+          <ConfigField label="Máx. concurrente" value={config.maxConcurrent} onChange={(v) => updateField('maxConcurrent', v)} min={1} max={10} step={1} />
         </div>
       </section>
 
@@ -451,12 +451,12 @@ export function ConfigView({ onReload }: Props) {
           <Clock className="h-4 w-4" /> Reintentos y tiempos
         </h3>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <ConfigField label="Max reintentos" value={config.maxRetries} onChange={(v) => updateField('maxRetries', v)} min={0} max={5} step={1} />
-          <ConfigField label="Delay base (ms)" value={config.baseDelayMs} onChange={(v) => updateField('baseDelayMs', v)} min={200} max={5000} step={100} />
-          <ConfigField label="Stagger (ms)" value={config.staggerMs} onChange={(v) => updateField('staggerMs', v)} min={0} max={2000} step={50} />
-          <ConfigField label="Max tokens" value={config.maxTokens} onChange={(v) => updateField('maxTokens', v)} min={1000} max={16000} step={500} />
-          <ConfigField label="Cache TTL (min)" value={config.cacheTtlMinutes} onChange={(v) => updateField('cacheTtlMinutes', v)} min={1} max={60} step={1} />
-          <ConfigField label="Rate limit (TPM)" value={config.rateLimitTpm} onChange={(v) => updateField('rateLimitTpm', v)} min={10000} max={2000000} step={10000} />
+          <ConfigField label="Máx. reintentos" value={config.maxRetries} onChange={(v) => updateField('maxRetries', v)} min={0} max={5} step={1} />
+          <ConfigField label="Retardo base (ms)" value={config.baseDelayMs} onChange={(v) => updateField('baseDelayMs', v)} min={200} max={5000} step={100} />
+          <ConfigField label="Escalonado (ms)" value={config.staggerMs} onChange={(v) => updateField('staggerMs', v)} min={0} max={2000} step={50} />
+          <ConfigField label="Máx. tokens" value={config.maxTokens} onChange={(v) => updateField('maxTokens', v)} min={1000} max={16000} step={500} />
+          <ConfigField label="Caché TTL (min)" value={config.cacheTtlMinutes} onChange={(v) => updateField('cacheTtlMinutes', v)} min={1} max={60} step={1} />
+          <ConfigField label="Límite TPM" value={config.rateLimitTpm} onChange={(v) => updateField('rateLimitTpm', v)} min={10000} max={2000000} step={10000} />
         </div>
       </section>
     </div>

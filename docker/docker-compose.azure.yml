@@ -80,6 +80,8 @@ services:
       - CLAUDE_API_KEY=${CLAUDE_API_KEY:-}
       - CLAUDE_ENDPOINT=${CLAUDE_ENDPOINT:-}
       - CLAUDE_MODEL1=${CLAUDE_MODEL1:-}
+    volumes:
+      - llm-state:/app/state
     deploy:
       resources:
         limits:
@@ -246,6 +248,7 @@ volumes:
   sqlserver-data:
   prometheus-data:
   grafana-data:
+  llm-state:
 
 networks:
   economia-net:
