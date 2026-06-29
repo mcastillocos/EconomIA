@@ -12,30 +12,6 @@ public class EmailConnector : IDataConnector
     }
 }
 
-/// <summary>Stub: Transcript connector — pendiente.</summary>
-public class TranscriptConnector : IDataConnector
-{
-    public string ConnectorName => "transcript_connector";
-    public string[] SupportedFileTypes => ["txt"];
-
-    public Task<IReadOnlyList<NormalizedDataPoint>> ExtractAsync(Stream stream, ConnectorMetadata metadata, CancellationToken ct = default)
-    {
-        return Task.FromResult<IReadOnlyList<NormalizedDataPoint>>(Array.Empty<NormalizedDataPoint>());
-    }
-}
-
-/// <summary>Stub: Audio connector — pendiente.</summary>
-public class AudioConnector : IDataConnector
-{
-    public string ConnectorName => "audio_connector";
-    public string[] SupportedFileTypes => ["mp3", "wav", "m4a"];
-
-    public Task<IReadOnlyList<NormalizedDataPoint>> ExtractAsync(Stream stream, ConnectorMetadata metadata, CancellationToken ct = default)
-    {
-        return Task.FromResult<IReadOnlyList<NormalizedDataPoint>>(Array.Empty<NormalizedDataPoint>());
-    }
-}
-
 /// <summary>Stub: Generic API connector — pendiente.</summary>
 public class ApiConnector : IDataConnector
 {

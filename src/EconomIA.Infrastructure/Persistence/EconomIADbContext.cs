@@ -19,6 +19,7 @@ public class EconomIADbContext : DbContext
     public DbSet<ChecklistTemplateItem> ChecklistTemplateItems => Set<ChecklistTemplateItem>();
     public DbSet<ChecklistInstance> ChecklistInstances => Set<ChecklistInstance>();
     public DbSet<ChecklistAnswer> ChecklistAnswers => Set<ChecklistAnswer>();
+    public DbSet<EarningsCall> EarningsCalls => Set<EarningsCall>();
 
     public EconomIADbContext(DbContextOptions<EconomIADbContext> options) : base(options) { }
 

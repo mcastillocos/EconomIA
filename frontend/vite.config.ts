@@ -96,6 +96,10 @@ export default defineConfig({
         target: 'http://localhost:5000',
         changeOrigin: true,
       },
+      '/api/earnings-calls': {
+        target: 'http://localhost:5000',
+        changeOrigin: true,
+      },
       '/api/workflows': {
         target: 'http://localhost:5000',
         changeOrigin: true,

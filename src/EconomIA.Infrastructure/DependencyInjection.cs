@@ -59,11 +59,14 @@ public static class DependencyInjection
         services.AddSingleton<IDataConnector, PdfConnector>();
         services.AddSingleton<IDataConnector, TikrConnector>();
         services.AddSingleton<IDataConnector, EmailConnector>();
-        services.AddSingleton<IDataConnector, TranscriptConnector>();
-        services.AddSingleton<IDataConnector, AudioConnector>();
+        services.AddScoped<IDataConnector, TranscriptConnectorReal>();
+        services.AddScoped<IDataConnector, AudioConnectorReal>();
         services.AddSingleton<IDataConnector, ApiConnector>();
         services.AddSingleton<IDataConnector, ManualConnector>();
         services.AddSingleton<ConnectorOrchestrator>();
+
+        // Audio Transcription (OpenAI Whisper)
+        services.AddHttpClient<IAudioTranscriptionService, WhisperTranscriptionService>();
 
         // Investing.com Connector (real, con HttpClient + resilience)
         services.AddHttpClient<InvestingConnector>()
@@ -88,6 +91,7 @@ public static class DependencyInjection
         services.AddSingleton<IDataConnector>(sp => sp.GetRequiredService<FmpConnector>());
 
         // News Connector (real, con HttpClient + resilience)
+        // Note: AudioConnectorReal and TranscriptConnectorReal registered above as Scoped (need ILlmService)
         services.AddHttpClient<RssNewsConnector>()
             .AddStandardResilienceHandler(options =>
             {
