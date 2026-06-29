@@ -144,7 +144,7 @@ export default function EarningsCallsView() {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <Mic className="h-6 w-6 text-purple-500" />
-          <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100">Earnings Calls</h2>
+          <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100">Llamadas de Resultados</h2>
         </div>
         <div className="flex gap-2">
           <button
@@ -168,7 +168,7 @@ export default function EarningsCallsView() {
           {calls.length === 0 && !uploadMode && (
             <div className="text-center py-8 text-gray-400">
               <Mic className="h-10 w-10 mx-auto mb-2 opacity-30" />
-              <p className="text-sm">No hay earnings calls aún</p>
+              <p className="text-sm">No hay llamadas de resultados aún</p>
               <p className="text-xs">Sube un audio o pega un transcript</p>
             </div>
           )}

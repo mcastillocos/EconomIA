@@ -45,7 +45,7 @@ export function WatchlistsView() {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h2 className="text-xl font-semibold text-gray-800 dark:text-gray-100">Carteras / Watchlists</h2>
+        <h2 className="text-xl font-semibold text-gray-800 dark:text-gray-100">Carteras / Seguimiento</h2>
         <button
           onClick={() => setShowForm(true)}
           className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium"

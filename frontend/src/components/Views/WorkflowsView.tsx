@@ -65,7 +65,7 @@ export default function WorkflowsView() {
     <div className="p-4 md:p-6 space-y-6">
       <div className="flex items-center gap-3">
         <GitBranch className="h-6 w-6 text-purple-500" />
-        <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100">Workflows Multi-Agente</h2>
+        <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100">Flujos Multi-Agente</h2>
       </div>
 
       {/* Selector de workflow */}

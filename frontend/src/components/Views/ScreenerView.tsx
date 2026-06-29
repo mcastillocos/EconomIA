@@ -137,7 +137,7 @@ export function ScreenerView() {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <Search className="h-6 w-6 text-blue-500" />
-          <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100">Learning Screener</h2>
+          <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100">Buscador Inteligente</h2>
         </div>
       </div>
 

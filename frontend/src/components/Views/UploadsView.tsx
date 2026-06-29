@@ -64,7 +64,7 @@ export function UploadsView() {
 
   return (
     <div className="space-y-4">
-      <h2 className="text-xl font-semibold text-gray-800 dark:text-gray-100">Uploads</h2>
+      <h2 className="text-xl font-semibold text-gray-800 dark:text-gray-100">Subidas</h2>
 
       {/* Drop zone */}
       <div

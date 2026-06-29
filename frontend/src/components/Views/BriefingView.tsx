@@ -26,7 +26,7 @@ export function BriefingView() {
 
   return (
     <div className="space-y-4">
-      <h2 className="text-xl font-semibold text-gray-800 dark:text-gray-100">Briefing Diario</h2>
+      <h2 className="text-xl font-semibold text-gray-800 dark:text-gray-100">Resumen Diario</h2>
 
       {/* Controls */}
       <div className="bg-white dark:bg-[#2a2a2a] rounded-xl border border-gray-200 dark:border-gray-700 p-4">
