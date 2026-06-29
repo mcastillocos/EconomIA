@@ -114,12 +114,14 @@ function App() {
             {activeView === 'stats' && <StatsView />}
             {activeView === 'config' && <ConfigView onReload={handleReload} />}
 
-            {/* Disclaimer visible */}
-            <div className="mt-8 border-t border-gray-200 dark:border-gray-700 pt-4">
-              <p className="text-[10px] text-gray-400 dark:text-gray-500 text-center">
-                economIA es una herramienta de apoyo al análisis financiero. No constituye recomendación de inversión. Las decisiones finales son responsabilidad del usuario.
-              </p>
-            </div>
+            {/* Disclaimer visible (oculto en chat que ya tiene el suyo) */}
+            {activeView !== 'chat' && (
+              <div className="mt-8 border-t border-gray-200 dark:border-gray-700 pt-4">
+                <p className="text-[10px] text-gray-400 dark:text-gray-500 text-center">
+                  economIA es una herramienta de apoyo al análisis financiero. No constituye recomendación de inversión. Las decisiones finales son responsabilidad del usuario.
+                </p>
+              </div>
+            )}
           </div>
         </main>
       </div>

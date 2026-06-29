@@ -61,7 +61,7 @@ export function ChatView() {
   };
 
   return (
-    <div className="flex flex-col h-full max-h-[calc(100vh-5rem)] overflow-hidden">
+    <div className="flex flex-col" style={{ height: 'calc(100vh - 7.5rem)' }}>
       <h2 className="text-xl font-semibold text-gray-800 dark:text-gray-100 mb-2 flex-shrink-0">Chat IA Financiero</h2>
 
       {/* Messages area */}
