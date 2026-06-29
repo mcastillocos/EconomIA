@@ -17,6 +17,7 @@ export const ROUTES: Record<ViewId, string> = {
   chat: '/ia/chat',
   agents: '/ia/agentes',
   workflows: '/ia/workflows',
+  checklists: '/ia/checklists',
   logs: '/sistema/logs',
   stats: '/sistema/estadisticas',
   config: '/sistema/config',

@@ -23,6 +23,7 @@ import { ChatView } from './components/Views/ChatView';
 import { AgentsView } from './components/Views/AgentsView';
 import NewsView from './components/Views/NewsView';
 import WorkflowsView from './components/Views/WorkflowsView';
+import ChecklistsView from './components/Views/ChecklistsView';
 import { appLog } from './store/logStore';
 import { getViewFromPath, getPathFromView } from './config/routes';
 
@@ -106,6 +107,7 @@ function App() {
             {activeView === 'chat' && <ChatView />}
             {activeView === 'agents' && <AgentsView />}
             {activeView === 'workflows' && <WorkflowsView />}
+            {activeView === 'checklists' && <ChecklistsView />}
             {activeView === 'logs' && <LogsView />}
             {activeView === 'stats' && <StatsView />}
             {activeView === 'config' && <ConfigView onReload={handleReload} />}

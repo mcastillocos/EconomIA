@@ -1,4 +1,5 @@
 import { TrendingUp, Moon, Sun } from 'lucide-react';
+import { APP_VERSION, GIT_HASH, BUILD_DATE } from 'virtual:app-meta';
 
 interface Props {
   isDark: boolean;
@@ -14,8 +15,8 @@ export default function Header({ isDark, onToggleTheme }: Props) {
           <h1 className="text-lg md:text-xl font-bold text-gray-900 dark:text-gray-100">
             Econom<span className="text-primary-600 dark:text-primary-400">IA</span>
           </h1>
-          <span className="hidden sm:inline text-[10px] font-mono text-gray-400 dark:text-gray-500 bg-gray-100 dark:bg-gray-800 px-1.5 py-0.5 rounded" title={`Build: ${__BUILD_DATE__} • Commit: ${__GIT_HASH__}`}>
-            v{__APP_VERSION__}
+          <span className="hidden sm:inline text-[10px] font-mono text-gray-400 dark:text-gray-500 bg-gray-100 dark:bg-gray-800 px-1.5 py-0.5 rounded" title={`Build: ${BUILD_DATE} • Commit: ${GIT_HASH}`}>
+            v{APP_VERSION}
           </span>
         </div>
         <div className="flex items-center gap-4">

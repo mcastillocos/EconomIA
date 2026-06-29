@@ -15,6 +15,10 @@ public class EconomIADbContext : DbContext
     public DbSet<FinancialMetric> FinancialMetrics => Set<FinancialMetric>();
     public DbSet<AIReport> AIReports => Set<AIReport>();
     public DbSet<AgentRun> AgentRuns => Set<AgentRun>();
+    public DbSet<ChecklistTemplate> ChecklistTemplates => Set<ChecklistTemplate>();
+    public DbSet<ChecklistTemplateItem> ChecklistTemplateItems => Set<ChecklistTemplateItem>();
+    public DbSet<ChecklistInstance> ChecklistInstances => Set<ChecklistInstance>();
+    public DbSet<ChecklistAnswer> ChecklistAnswers => Set<ChecklistAnswer>();
 
     public EconomIADbContext(DbContextOptions<EconomIADbContext> options) : base(options) { }
 
