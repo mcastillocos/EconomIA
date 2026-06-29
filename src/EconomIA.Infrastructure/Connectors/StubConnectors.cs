@@ -1,29 +1,5 @@
 namespace EconomIA.Infrastructure.Connectors;
 
-/// <summary>Stub: Tikr.com connector — pendiente de implementación con API real.</summary>
-public class TikrConnector : IDataConnector
-{
-    public string ConnectorName => "tikr_connector";
-    public string[] SupportedFileTypes => [];
-
-    public Task<IReadOnlyList<NormalizedDataPoint>> ExtractAsync(Stream stream, ConnectorMetadata metadata, CancellationToken ct = default)
-    {
-        return Task.FromResult<IReadOnlyList<NormalizedDataPoint>>(Array.Empty<NormalizedDataPoint>());
-    }
-}
-
-/// <summary>Stub: Investing.com connector — pendiente de implementación con API real.</summary>
-public class InvestingConnector : IDataConnector
-{
-    public string ConnectorName => "investing_connector";
-    public string[] SupportedFileTypes => [];
-
-    public Task<IReadOnlyList<NormalizedDataPoint>> ExtractAsync(Stream stream, ConnectorMetadata metadata, CancellationToken ct = default)
-    {
-        return Task.FromResult<IReadOnlyList<NormalizedDataPoint>>(Array.Empty<NormalizedDataPoint>());
-    }
-}
-
 /// <summary>Stub: Email connector — pendiente.</summary>
 public class EmailConnector : IDataConnector
 {

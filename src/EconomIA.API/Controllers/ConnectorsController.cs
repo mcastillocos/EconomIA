@@ -9,11 +9,19 @@ public class ConnectorsController : ControllerBase
 {
     private readonly ConnectorOrchestrator _orchestrator;
     private readonly RssNewsConnector _newsConnector;
+    private readonly FmpConnector _fmpConnector;
+    private readonly InvestingConnector _investingConnector;
 
-    public ConnectorsController(ConnectorOrchestrator orchestrator, RssNewsConnector newsConnector)
+    public ConnectorsController(
+        ConnectorOrchestrator orchestrator,
+        RssNewsConnector newsConnector,
+        FmpConnector fmpConnector,
+        InvestingConnector investingConnector)
     {
         _orchestrator = orchestrator;
         _newsConnector = newsConnector;
+        _fmpConnector = fmpConnector;
+        _investingConnector = investingConnector;
     }
 
     /// <summary>
@@ -83,6 +91,40 @@ public class ConnectorsController : ControllerBase
     public IActionResult GetAvailableConnectors()
     {
         return Ok(_orchestrator.GetAvailableConnectors());
+    }
+
+    /// <summary>
+    /// Obtiene datos fundamentales de una empresa via Financial Modeling Prep.
+    /// </summary>
+    [HttpGet("fmp/{ticker}")]
+    [ProducesResponseType(typeof(IReadOnlyList<NormalizedDataPoint>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetFmpData(string ticker, CancellationToken ct)
+    {
+        var data = await _fmpConnector.FetchCompanyDataAsync(ticker.ToUpperInvariant(), ct);
+        return Ok(data);
+    }
+
+    /// <summary>
+    /// Obtiene cotización en tiempo real via FMP.
+    /// </summary>
+    [HttpGet("fmp/{ticker}/quote")]
+    [ProducesResponseType(typeof(FmpQuote), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetFmpQuote(string ticker, CancellationToken ct)
+    {
+        var quote = await _fmpConnector.FetchQuoteAsync(ticker.ToUpperInvariant(), ct);
+        if (quote is null) return NotFound();
+        return Ok(quote);
+    }
+
+    /// <summary>
+    /// Obtiene calendario económico de Investing.com.
+    /// </summary>
+    [HttpGet("investing/calendar")]
+    [ProducesResponseType(typeof(IReadOnlyList<EconomicEvent>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetEconomicCalendar(CancellationToken ct)
+    {
+        var events = await _investingConnector.FetchEconomicCalendarAsync(ct);
+        return Ok(events);
     }
 }
 

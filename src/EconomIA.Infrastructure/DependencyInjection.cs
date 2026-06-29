@@ -58,13 +58,34 @@ public static class DependencyInjection
         services.AddSingleton<IDataConnector, ExcelConnector>();
         services.AddSingleton<IDataConnector, PdfConnector>();
         services.AddSingleton<IDataConnector, TikrConnector>();
-        services.AddSingleton<IDataConnector, InvestingConnector>();
         services.AddSingleton<IDataConnector, EmailConnector>();
         services.AddSingleton<IDataConnector, TranscriptConnector>();
         services.AddSingleton<IDataConnector, AudioConnector>();
         services.AddSingleton<IDataConnector, ApiConnector>();
         services.AddSingleton<IDataConnector, ManualConnector>();
         services.AddSingleton<ConnectorOrchestrator>();
+
+        // Investing.com Connector (real, con HttpClient + resilience)
+        services.AddHttpClient<InvestingConnector>()
+            .AddStandardResilienceHandler(options =>
+            {
+                options.Retry.MaxRetryAttempts = 2;
+                options.Retry.Delay = TimeSpan.FromSeconds(1);
+                options.AttemptTimeout.Timeout = TimeSpan.FromSeconds(15);
+                options.TotalRequestTimeout.Timeout = TimeSpan.FromSeconds(30);
+            });
+        services.AddSingleton<IDataConnector>(sp => sp.GetRequiredService<InvestingConnector>());
+
+        // Financial Modeling Prep Connector (API real)
+        services.AddHttpClient<FmpConnector>()
+            .AddStandardResilienceHandler(options =>
+            {
+                options.Retry.MaxRetryAttempts = 2;
+                options.Retry.Delay = TimeSpan.FromSeconds(1);
+                options.AttemptTimeout.Timeout = TimeSpan.FromSeconds(15);
+                options.TotalRequestTimeout.Timeout = TimeSpan.FromSeconds(30);
+            });
+        services.AddSingleton<IDataConnector>(sp => sp.GetRequiredService<FmpConnector>());
 
         // News Connector (real, con HttpClient + resilience)
         services.AddHttpClient<RssNewsConnector>()
