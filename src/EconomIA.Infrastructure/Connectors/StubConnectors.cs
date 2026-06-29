@@ -36,18 +36,6 @@ public class EmailConnector : IDataConnector
     }
 }
 
-/// <summary>Stub: News connector — pendiente.</summary>
-public class NewsConnector : IDataConnector
-{
-    public string ConnectorName => "news_connector";
-    public string[] SupportedFileTypes => [];
-
-    public Task<IReadOnlyList<NormalizedDataPoint>> ExtractAsync(Stream stream, ConnectorMetadata metadata, CancellationToken ct = default)
-    {
-        return Task.FromResult<IReadOnlyList<NormalizedDataPoint>>(Array.Empty<NormalizedDataPoint>());
-    }
-}
-
 /// <summary>Stub: Transcript connector — pendiente.</summary>
 public class TranscriptConnector : IDataConnector
 {

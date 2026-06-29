@@ -1,10 +1,10 @@
 import { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, Table2, BarChart3, Briefcase, ScrollText, Settings, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, Activity, Building2, ListChecks, Upload, Database, FileText, Newspaper, Search, MessageSquare, Bot, Home } from 'lucide-react';
+import { LayoutDashboard, Table2, BarChart3, Briefcase, ScrollText, Settings, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, Activity, Building2, ListChecks, Upload, Database, FileText, Newspaper, Search, MessageSquare, Bot, Home, Rss } from 'lucide-react';
 import clsx from 'clsx';
 import { getViewFromPath, getPathFromView } from '../../config/routes';
 
-export type ViewId = 'overview' | 'global' | 'datos' | 'graficas' | 'misfondos' | 'companies' | 'watchlists' | 'uploads' | 'metrics' | 'reports' | 'briefing' | 'screener' | 'chat' | 'agents' | 'logs' | 'stats' | 'config';
+export type ViewId = 'overview' | 'global' | 'datos' | 'graficas' | 'misfondos' | 'companies' | 'watchlists' | 'uploads' | 'metrics' | 'reports' | 'briefing' | 'news' | 'screener' | 'chat' | 'agents' | 'logs' | 'stats' | 'config';
 
 interface NavItem {
   id: ViewId;
@@ -27,6 +27,7 @@ const navItems: NavItem[] = [
   { id: 'metrics', label: 'Datos Norm.', icon: Database, section: 'Análisis' },
   { id: 'reports', label: 'Informes', icon: FileText, section: 'IA' },
   { id: 'briefing', label: 'Briefing', icon: Newspaper, section: 'IA' },
+  { id: 'news', label: 'Noticias', icon: Rss, section: 'IA' },
   { id: 'screener', label: 'Screener', icon: Search, section: 'IA' },
   { id: 'chat', label: 'Chat IA', icon: MessageSquare, section: 'IA' },
   { id: 'agents', label: 'Agentes', icon: Bot, section: 'IA' },

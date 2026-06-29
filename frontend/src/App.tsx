@@ -21,6 +21,7 @@ import { BriefingView } from './components/Views/BriefingView';
 import { ScreenerView } from './components/Views/ScreenerView';
 import { ChatView } from './components/Views/ChatView';
 import { AgentsView } from './components/Views/AgentsView';
+import NewsView from './components/Views/NewsView';
 import { appLog } from './store/logStore';
 import { getViewFromPath, getPathFromView } from './config/routes';
 
@@ -99,6 +100,7 @@ function App() {
             {activeView === 'metrics' && <MetricsView />}
             {activeView === 'reports' && <ReportsView />}
             {activeView === 'briefing' && <BriefingView />}
+            {activeView === 'news' && <NewsView />}
             {activeView === 'screener' && <ScreenerView />}
             {activeView === 'chat' && <ChatView />}
             {activeView === 'agents' && <AgentsView />}

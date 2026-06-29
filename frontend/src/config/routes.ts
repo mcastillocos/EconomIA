@@ -12,6 +12,7 @@ export const ROUTES: Record<ViewId, string> = {
   metrics: '/analisis/metricas',
   reports: '/ia/informes',
   briefing: '/ia/briefing',
+  news: '/ia/noticias',
   screener: '/ia/screener',
   chat: '/ia/chat',
   agents: '/ia/agentes',

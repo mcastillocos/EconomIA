@@ -8,6 +8,7 @@ using EconomIA.Infrastructure.ExternalServices.Agents;
 using EconomIA.Infrastructure.Messaging;
 using EconomIA.Infrastructure.Persistence;
 using EconomIA.Infrastructure.Persistence.Repositories;
+using EconomIA.Infrastructure.Scheduling;
 using EconomIA.Infrastructure.Telemetry;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -58,11 +59,25 @@ public static class DependencyInjection
         services.AddSingleton<IDataConnector, TikrConnector>();
         services.AddSingleton<IDataConnector, InvestingConnector>();
         services.AddSingleton<IDataConnector, EmailConnector>();
-        services.AddSingleton<IDataConnector, NewsConnector>();
         services.AddSingleton<IDataConnector, TranscriptConnector>();
         services.AddSingleton<IDataConnector, AudioConnector>();
         services.AddSingleton<IDataConnector, ApiConnector>();
         services.AddSingleton<IDataConnector, ManualConnector>();
+        services.AddSingleton<ConnectorOrchestrator>();
+
+        // News Connector (real, con HttpClient + resilience)
+        services.AddHttpClient<RssNewsConnector>()
+            .AddStandardResilienceHandler(options =>
+            {
+                options.Retry.MaxRetryAttempts = 2;
+                options.Retry.Delay = TimeSpan.FromSeconds(1);
+                options.AttemptTimeout.Timeout = TimeSpan.FromSeconds(15);
+                options.TotalRequestTimeout.Timeout = TimeSpan.FromSeconds(30);
+            });
+        services.AddSingleton<IDataConnector>(sp => sp.GetRequiredService<RssNewsConnector>());
+
+        // Briefing Scheduler
+        services.AddHostedService<BriefingSchedulerService>();
 
         // Cache
         services.AddScoped<ICacheService, RedisCacheService>();
